@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block main %}
+{% if errors %}
+{% for error in errors %}
+<p>{{ error|safe }}</p>
+{% endfor %}
+{% else %}
+<form id="manifestForm" method="POST">
+<br>
+<div class="row">
+    <div class="col-sm">
+        <header class="major">
+            <h2>Display a Collection Manifest</h2>
+        </header>
+    </div>    
+    <div class="col-sm text-right">
+        <button id="preview" class="btn btn-lg btn-outline-editorial">Preview</button>
+        <button id="update" class="btn btn-lg  btn-outline-editorial">Edit</button>
+        <button id="delete" class="btn btn-lg  btn-outline-editorial">Delete</button>
+        <button id="export" class="btn btn-lg  btn-outline-editorial">Export</button>
+    </div>
+</div>
+<ul class="nav nav-tabs" id="publicationsFormNav" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="required-tab" data-toggle="tab" href="#required" role="tab" aria-controls="required" aria-selected="true">Required Properties</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="optional-tab" data-toggle="tab" href="#optional" role="tab" aria-controls="optional" aria-selected="false">Optional Properties</a>
+    </li>
+</ul>
+<div id="manifestCard"></div>
+</form>
+
+<!-- Preview -->
+<div id="previewDisplay" style="display: none;">
+    <br>
+    <button id="hide" class="btn btn-lg btn-outline-editorial">Hide</button>
+    <pre id="manifest"></pre>
+</div>
+<script>
+var nodetype = '{{ nodetype|safe }}';
+</script>
+{% include '/corpus/display-form-templates.html' %}
+
+<!-- Export Modal -->
+<form id="modalform">
+<div id="exportModal" class="modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Select Items to Export</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        {% if nodetype == 'collection' %}
+        <div class="form-check">
+            <input type="checkbox" name="selectall" id="selectall">
+            <label for="selectall">Select All</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="exportchoice" name="manifestonly" id="manifestonly" value="manifestonly">
+            <label for="manifestonly">Collection Manifest Only</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="exportchoice" name="exportrawdata" id="exportrawdata" value="exportrawdata">
+            <label for="exportrawdata">RawData</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="exportchoice" name="exportprocesseddata" id="exportprocesseddata" value="exportprocesseddata">
+            <label for="exportprocesseddata">ProcessedData</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="exportchoice" name="exportmetadata" id="exportmetadata" value="exportmetadata">
+            <label for="exportmetadata">Metadata</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="exportchoice" name="exportoutputs" id="exportoutputs" value="exportoutputs">
+            <label for="exportoutputs">Outputs</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="exportchoice" name="exportresults" id="exportresults" value="exportresults">
+            <label for="exportresults">Results</label>
+        </div>
+        {% else %}
+        <div class="form-check">
+            <input type="radio" class="exportchoice" name="exportopt" id="manifestonly" value="manifestonly" checked="checked">
+            <label for="manifestonly"">Collection Manifest Only</label>
+        </div>
+        <div class="form-check">
+            <input type="radio" class="exportchoice" name="exportopt" id="manifestanddata" value="manifestanddata">
+            <label for="manifestanddata">Manifest and Data</label>
+        </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="doExport" class="btn btn-outline-editorial">Export</button>
+        <button type="button" class="btn btn-outline-editorial" data-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+</form>
+{% endif %}
+{% endblock main %}

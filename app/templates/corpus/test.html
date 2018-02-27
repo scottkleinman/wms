@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block main %}
+<form method="POST">
+<br>
+<div class="row">
+    <div class="col-sm">
+        <header class="major">
+            <h2>Import Collection Data</h2>
+        </header>
+    </div>    
+    <div class="col-sm text-right">
+        <button id="preview" class="btn btn-lg btn-outline-editorial">Preview</button>
+        <button type="submit" id="save" class="btn btn-lg  btn-outline-editorial">Save</button>
+    </div>
+</div>
+<div class="form-group row">
+    <label for="Node Type" class="col-sm-2 col-form-label col-form-label-sm">Node Type</label>
+    <div class="col-sm-10">
+        <div class="row">
+            <div class="col">
+              <input class="form-check-input" type="radio" name="nodetype" id="generic" value="generic">
+              <label class="form-check-label" for="generic">Generic</label>
+            </div>
+            <div class="col">
+              <input class="form-check-input" type="radio" name="nodetype" id="rawdata" value="RawData">
+              <label class="form-check-label" for="rawdata">RawData</label>
+            </div>
+            <div class="col">
+              <input class="form-check-input" type="radio" name="nodetype" id="processeddata" value="ProcessedData" checked="checked">
+              <label class="form-check-label" for="processeddata">ProcessedData</label>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col">
+              <input class="form-check-input" type="radio" name="nodetype" id="metadata" value="Metadata">
+              <label class="form-check-label" for="metadata">Metadata</label>
+            </div>
+            <div class="col">
+              <input class="form-check-input" type="radio" name="nodetype" id="outputs" value="Outputs">
+              <label class="form-check-label" for="Ouputs">Outputs</label>
+            </div>
+            <div class="col">
+              <input class="form-check-input" type="radio" name="nodetype" id="related" value="Related">
+              <label class="form-check-label" for="related">Related</label>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="form-group row">
+    <label for="_id" class="col-sm-2 col-form-label col-form-label-sm">_id</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control form-control-sm" id="_id" name="_id" required>
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="path" class="col-sm-2 col-form-label col-form-label-sm">path</label>
+    <div class="col-sm-10">
+        <input type="text" class="form-control form-control-sm" id="path" name="path" required>
+    </div>
+  </div>
+  <!-- RawData -->
+  <div class="rawdata" style="display:none;">
+  <div class="form-group row">
+    <label for="relationships" class="col-sm-2 col-form-label col-form-label-sm">relationships</label>
+    <div class="col-sm-10">
+        <textarea name="relationships" id="relationships" placeholder="List each relationship keyword and path to related collections, separated by a comma, on a separate line." required disabled></textarea>
+    </div>
+  </div>
+  <div class="form-group row">
+    <div class="col-sm-10 offset-sm-2">
+        <input class="form-check-input" type="checkbox" name="ocr" id="ocr" disabled>
+        <label class="form-check-label" for="ocr">OCR</label>
+    </div>
+   </div>
+  <div class="form-group row">
+    <label for="rights" class="col-sm-2 col-form-label col-form-label-sm">rights</label>
+    <div class="col-sm-10">
+        <input type="text" class="form-control form-control-sm" id="rights" disabled>
+    </div>
+  </div>
+</div>
+<!-- ProcessedData -->
+  <div class="processeddata">
+  <div class="form-group row">
+    <label for="processes" class="col-sm-2 col-form-label col-form-label-sm">processes</label>
+    <div class="col-sm-10">
+        <textarea id="processes" name="processes" placeholder="List each process on a separate line." required></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- Global -->
+  <div class="form-group row">
+    <label for="title" class="col-sm-2 col-form-label col-form-label-sm">title</label>
+    <div class="col-sm-10">
+        <input type="text" class="form-control form-control-sm" id="title">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="altTitle" class="col-sm-2 col-form-label col-form-label-sm">altTitle</label>
+    <div class="col-sm-10">
+        <input type="text" class="form-control form-control-sm" id="altTitle">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="description" class="col-sm-2 col-form-label col-form-label-sm">description</label>
+    <div class="col-sm-10">
+        <textarea name="description"></textarea>
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="date" class="col-sm-2 col-form-label col-form-label-sm">date</label>
+    <div class="col-sm-10">
+        <textarea name="date" placeholder="List each date on a separate line. Date ranges should use the separate start and end dates with commas. Valid formats are YYYY-MM-DD and YYYY-MM-DDTHH:MM:SS."></textarea>
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="label" class="col-sm-2 col-form-label col-form-label-sm">label</label>
+    <div class="col-sm-10">
+        <input type="text" class="form-control form-control-sm" id="label">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="notes" class="col-sm-2 col-form-label col-form-label-sm">notes</label>
+    <div class="col-sm-10">
+        <textarea name="notes" placeholder="List each note on a separate line."></textarea>
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="fileupload" class="col-sm-2 col-form-label col-form-label-sm">Upload</label>
+    <input id="fileupload" type="file" name="files[]" data-url="/corpus/upload" multiple>
+    <div id="progress" style="display:none;">
+        <div class="bar" style="width: 0%;"></div>
+        <p id="progress-status">Uploading...</p>
+    </div>
+</div>
+</form>
+<!-- Preview -->
+<div id="previewDisplay" style="display: none;">
+    <br>
+    <button id="hide" class="btn btn-lg btn-outline-editorial">Hide</button>
+    <pre id="manifest"></pre>
+</div>
+<p>Notes:</p>
+<p>The idea is that you upload your files and a data node is created if it does not already exist. But how do you upload files to an existing node? If the collection exists, check for a node in that collection. This should be straightforward.</p>
+{% endblock main %}

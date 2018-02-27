@@ -8,6 +8,6 @@ This is an early-stage prototype for the WE1S WE1S Workflow Management System. I
 - pandas
 - pymongo (`pip install pymongo`)
 - tabulator (`pip install tabulator`)
-- tableschema_pandas (pip install `tableschema_pandas`)
+- tableschema_pandas (`pip install tableschema_pandas`)
 
 Once the app is running, there is a "To Do" page with a list of tasks for future development.

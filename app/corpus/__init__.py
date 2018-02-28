@@ -322,7 +322,7 @@ def search():
 		return render_template('corpus/search.html', scripts=scripts, breadcrumbs=breadcrumbs)
 	if request.method == 'POST':
 		result, num_pages, errors = methods.search_collections(request.json)
-		if result is None:
+		if result == []:
 			errors.append('No records were found matching your search criteria.')
 		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
 

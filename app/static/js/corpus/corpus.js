@@ -137,56 +137,61 @@ function searchCorpus(data) {
 	.done(function(response) {
 		$('#results').empty();
 		response = JSON.parse(response);
-		if (response['errors'].length != 0) {
+		if (response['errors'] != []) {
 			result = response['errors'];
+			var message = '';
+			$.each(result, function (i, item) {
+				message += '<p>' + item + '</p>';
+			});
+		    bootbox.alert({
+		        message: message
+		    });
 		} else {
 			result = response['response'];
+			// Make the result into a string
+			var out = '';
+			$.each(result, function (i, item) {
+				var link = '/corpus/display/' + item['_id'];
+				out += '<h4><a href="' + link + '">' + item['_id'] + '</a></h4><br>';
+				$.each(item, function (key, value) {
+					value = value.toString();
+					if (key == 'content' && value.length > 200) {
+						value = value.substring(0,200) + '...';
+					}
+			        out += '<code>'+ key +'</code>: ' + value + '<br>';
+		        });
+				out += '<hr>';
+		    });
+		    var $pagination = $('#pagination');
+		    var defaultOpts = {
+		        visiblePages: 5,
+		        initiateStartPageClick: false,
+		        onPageClick: function (event, page) {
+					var newdata = {
+						'query': $('#query').val(),
+						'regex': $('#regex').is(':checked'),
+						'limit': $('#limit').val(),
+						'properties': $('#properties').val(),
+						'page': page
+					}
+		            searchCorpus(newdata);
+		            $('#scroll').click();
+		        }
+		    };
+	        var totalPages = parseInt(response['num_pages']);
+	        var currentPage = $pagination.twbsPagination('getCurrentPage');
+	        $pagination.twbsPagination('destroy');
+	        $pagination.twbsPagination($.extend({}, defaultOpts, {
+	            startPage: currentPage,
+	            totalPages: totalPages
+	        }));
+			$('#results').append(out);
+			$('#hideSearch').html('Show Form');
+			$('#exportSearchResults').show();
+			$('#search-form').hide();
+	        $('#results').show();
+	        $('#pagination').show();
 		}
-		// Make the result into a string
-		var out = '';
-		// alert(JSON.stringify(result));
-		$.each(result, function (i, item) {
-			// alert(item['_id']);
-			var link = '/corpus/display/' + item['_id'];
-			out += '<h4><a href="' + link + '">' + item['_id'] + '</a></h4><br>';
-			$.each(item, function (key, value) {
-				value = value.toString();
-				if (key == 'content' && value.length > 200) {
-					value = value.substring(0,200) + '...';
-				}
-		        out += '<code>'+ key +'</code>: ' + value + '<br>';
-	        });
-			out += '<hr>';
-	    });
-	    var $pagination = $('#pagination');
-	    var defaultOpts = {
-	        visiblePages: 5,
-	        initiateStartPageClick: false,
-	        onPageClick: function (event, page) {
-				var newdata = {
-					'query': $('#query').val(),
-					'regex': $('#regex').is(':checked'),
-					'limit': $('#limit').val(),
-					'properties': $('#properties').val(),
-					'page': page
-				}
-	            searchCorpus(newdata);
-	            $('#scroll').click();
-	        }
-	    };
-        var totalPages = parseInt(response['num_pages']);
-        var currentPage = $pagination.twbsPagination('getCurrentPage');
-        $pagination.twbsPagination('destroy');
-        $pagination.twbsPagination($.extend({}, defaultOpts, {
-            startPage: currentPage,
-            totalPages: totalPages
-        }));
-		$('#results').append(out);
-		$('#hideSearch').html('Show Form');
-		$('#exportSearchResults').show();
-		$('#search-form').hide();
-        $('#results').show();
-        $('#pagination').show();
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
 	    bootbox.alert({

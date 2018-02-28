@@ -276,8 +276,8 @@ def search_collections(values):
 		else:
 			return result, 1, errors
 	else:
-		errors.append('The Publications database is empty.')
-		return [], errors
+		errors.append('The Corpus database is empty.')
+		return [], 1, errors
 
 
 def update_record(manifest):

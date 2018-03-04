@@ -17,7 +17,7 @@
 		<!--[if lte IE 9]><link rel="stylesheet" href="{{ url_for('static', filename='css/ie9.css') }}" /><![endif]-->
 		<!--[if lte IE 8]><link rel="stylesheet" href="{{ url_for('static', filename='css/ie8.css') }}" /><![endif]-->
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-        {% if styles %}{% for style in styles %}<link rel="stylesheet" href="{{ url_for('static', filename=script) }}">{% endfor %}{% endif %}
+        {% if styles %}{% for style in styles %}<link rel="stylesheet" href="{{ url_for('static', filename=style) }}">{% endfor %}{% endif %}
 	</head>
 	<body>
 

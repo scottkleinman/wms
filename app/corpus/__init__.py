@@ -70,7 +70,7 @@ def create_manifest():
 	if 'date' in manifest.keys():
 		dates = manifest['date'].splitlines()
 		dates = [x.strip() for x in dates]
-		new_dates, error_list = check_date_format(dates)
+		new_dates, error_list = methods.check_date_format(dates)
 		errors = errors + error_list
 		manifest['date'] = dates
 	# Handle other textarea strings
@@ -82,7 +82,7 @@ def create_manifest():
 	nodetype = manifest.pop('nodetype', None)
 	# Validate the resulting manifest
 	if methods.validate_manifest(manifest, nodetype) == True:
-		database_errors = create_record(manifest)
+		database_errors = methods.create_record(manifest)
 		errors = errors + database_errors
 	else:
 		msg = '''A valid manifest could not be created with the 
@@ -500,3 +500,33 @@ def clear():
 	Disable this for production.
 	"""
 	corpus_db.delete_many({})
+
+
+@corpus.route('/search2', methods=['GET', 'POST'])
+def search2():
+	""" Page for searching Corpus manifests."""
+	scripts = ['js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery.twbsPagination.min.js', 'js/corpus/corpus.js', 'js/corpus/search.js']
+	styles = ['css/query-builder.default.css']	
+	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/search', 'label': 'Search Collections'}]
+	if request.method == 'GET':
+		return render_template('corpus/search2.html', scripts=scripts, styles=styles, breadcrumbs=breadcrumbs)
+	if request.method == 'POST':
+		query = request.json['query']
+		query = {}
+		page = request.json['page']
+		limit = request.json['limit']
+		show_properties = request.json['show_properties']
+		paginated = True
+		# result = list(corpus_db.find(
+		# 	query)
+		# 	#projection=show_properties)
+		# )
+		# num_pages = 1
+		# errors = []
+		# print(result)
+		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties)
+		print(result)
+		if result == []:
+			errors.append('No records were found matching your search criteria.')
+		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
+

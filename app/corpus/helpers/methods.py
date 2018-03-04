@@ -280,6 +280,32 @@ def search_collections(values):
 		return [], 1, errors
 
 
+def search_corpus(query, limit, paginated, page, show_properties):
+	"""Uses the query generated in /search2 and returns the search results.
+	"""
+	page_size = 10
+	errors = []
+	if len(list(corpus_db.find())) > 0:
+		result = list(corpus_db.find(
+			query,
+			limit=limit)
+			#projection=show_properties)
+		)
+		# Double the result for testing
+		# result = result + result + result + result + result
+		# result = result + result + result + result + result
+		if paginated == True:
+			pages = list(paginate(result, page_size=page_size))
+			num_pages = len(pages)
+			page = get_page(pages, page)
+			return page, num_pages, errors
+		else:
+			return result, 1, errors
+	else:
+		errors.append('The Corpus database is empty.')
+		return [], 1, errors
+
+
 def update_record(manifest):
 	""" Updates a manifest record in the database.
 

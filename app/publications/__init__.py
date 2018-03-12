@@ -116,10 +116,17 @@ def display(_id):
 		assert result != None
 		for key, value in result.items():
 			if isinstance(value, list):
-				manifest[key] = '\n'.join(value)
+				manifest[key] = []
+				for element in value:
+					if isinstance(element, dict):
+						l = list(methods.NestedDictValues(element))
+						s = ', '.join(l)
+						manifest[key].append(s)
+					else:
+						manifest[key].append(element)
+				manifest[key] = '\n'.join(manifest[key])
 			else:
-				manifest[key] = value
-		# Need to convert lists to strings
+				manifest[key] = str(value)
 	except:
 		errors.append('Unknown Error: The manifest does not exist or could not be loaded.')
 	return render_template('publications/display.html', lang_list=lang_list, 

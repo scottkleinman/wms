@@ -75,7 +75,7 @@ input[type="text"]:disabled, textarea:disabled, select:disabled {
 		input[type="button"].disabled,
 		input[type="button"]:disabled,
 		/*button.disabled,
-		button:disabled,*/
+		button:disabled,
 		.button.disabled,
 		.button:disabled {
 			-moz-pointer-events: none;

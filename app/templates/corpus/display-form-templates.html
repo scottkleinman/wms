@@ -280,6 +280,14 @@
                 </div>
             </div>
         </div>
+        <div class="tab-pane fade" id="manifest-content" role="tabpanel" aria-labelledby="manifest-content-tab">
+            <div class="form-group row">
+                <br>
+                <div class="col-sm-10">
+                        <textarea style="height: 375px;" name="na" id="manifest-content" placeholder="List each note on a separate line." class="form-control disabled" readonly>{{ manifest['content']|safe or '' }}</textarea>
+                </div>
+            </div>
+        </div>    
     </div>
 </script>
 

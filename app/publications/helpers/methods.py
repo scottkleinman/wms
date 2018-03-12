@@ -78,6 +78,20 @@ def make_dir(folder):
 		os.makedirs(folder)
 
 
+def NestedDictValues(d):
+	""" Yields all values in a multilevel dict. Returns a generator
+	from which can be cast as a list.
+	"""
+	for v in d.values():
+		if isinstance(v, list):
+			yield from NestedDictValues(v[0])
+			break
+		if isinstance(v, dict):
+			yield from NestedDictValues(v)
+		else:
+			yield v
+
+
 def paginate(iterable, page_size):
 	"""Returns a generator with a list sliced into pages by the designated size. If 
 	the generator is converted to a list called `pages`, and individual page can 

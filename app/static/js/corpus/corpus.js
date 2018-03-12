@@ -137,7 +137,7 @@ function searchCorpus(data) {
 	.done(function(response) {
 		$('#results').empty();
 		response = JSON.parse(response);
-		if (response['errors'] != []) {
+		if (response['errors'].length != 0) {
 			result = response['errors'];
 			var message = '';
 			$.each(result, function (i, item) {
@@ -154,7 +154,7 @@ function searchCorpus(data) {
 				var link = '/corpus/display/' + item['_id'];
 				out += '<h4><a href="' + link + '">' + item['_id'] + '</a></h4><br>';
 				$.each(item, function (key, value) {
-					value = value.toString();
+					value = JSON.stringify(value);
 					if (key == 'content' && value.length > 200) {
 						value = value.substring(0,200) + '...';
 					}
@@ -375,7 +375,7 @@ $(document).ready(function() {
 		e.preventDefault();
 		if ($('#update').html() == 'Edit') {
 			$('form').find('input, textarea, select').each(function(){
-				if ($(this).attr('id') != '_id') {
+				if ($(this).attr('id') != '_id' && $(this).attr('id') != 'manifest-content') {
 					$(this).prop('readonly', false);
 					$(this).removeClass('disabled');
 				}

@@ -1,4 +1,5 @@
 import os, tabulator, itertools, requests, json, re, zipfile, shutil
+import subprocess
 # from datetime import datetime
 from jsonschema import validate, FormatChecker
 # from tabulator import Stream
@@ -114,10 +115,17 @@ def display(_id):
 		assert result != None
 		for key, value in result.items():
 			if isinstance(value, list):
-				manifest[key] = '\n'.join(value)
+				manifest[key] = []
+				for element in value:
+					if isinstance(element, dict):
+						l = list(methods.NestedDictValues(element))
+						s = ', '.join(l)
+						manifest[key].append(s)
+					else:
+						manifest[key].append(element)
+				manifest[key] = '\n'.join(manifest[key])
 			else:
-				manifest[key] = value
-		# Get a nodetype to determine which form to display
+				manifest[key] = str(value)
 		if manifest['path'] == ',Corpus,':
 			nodetype = 'collection'
 		elif manifest['_id'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
@@ -136,7 +144,6 @@ def update_manifest():
 	""" Ajax route for updating manifests."""
 	errors = []
 	data = request.json
-	print(data)
 	data['namespace'] = 'we1sv1.1'
 	# Set id and path by branch
 	if data['path'] == ',Corpus,':
@@ -156,11 +163,11 @@ def update_manifest():
 			manifest[key] = value
 	# Handle dates
 	if 'date' in manifest.keys():
-		dates = manifest['date'].splitlines()
-		dates = [x.strip() for x in dates]
+		ls = manifest['date'].splitlines()
+		dates = [x.strip() for x in ls]
 		new_dates, error_list = methods.check_date_format(dates)
 		errors = errors + error_list
-		manifest['date'] = dates
+		manifest['date'] = new_dates
 	# Handle other textarea strings
 	list_props = ['publications', 'collectors', 'queryterms', 'processes', 'notes']
 	for item in list_props:
@@ -313,7 +320,7 @@ def download_export(filename):
 	return response
 
 
-@corpus.route('/search', methods=['GET', 'POST'])
+@corpus.route('/search1', methods=['GET', 'POST'])
 def search():
 	""" Page for searching Corpus manifests."""
 	scripts = ['js/parsley.min.js', 'js/jquery.twbsPagination.min.js', 'js/corpus/corpus.js']
@@ -326,6 +333,36 @@ def search():
 			errors.append('No records were found matching your search criteria.')
 		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
 
+
+@corpus.route('/search', methods=['GET', 'POST'])
+def search2():
+	""" Experimental Page for searching Corpus manifests."""
+	scripts = ['js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery.twbsPagination.min.js', 'js/corpus/corpus.js', 'js/jquery-sortable-min.js', 'js/corpus/search.js']
+	styles = ['css/query-builder.default.css']	
+	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/search', 'label': 'Search Collections'}]
+	if request.method == 'GET':
+		return render_template('corpus/search2.html', scripts=scripts, styles=styles, breadcrumbs=breadcrumbs)
+	if request.method == 'POST':
+		query = request.json['query']
+		page = int(request.json['page'])
+		limit = int(request.json['advancedOptions']['limit'])
+		sorting = []
+		if request.json['advancedOptions']['show_properties'] != []:
+			show_properties = request.json['advancedOptions']['show_properties']
+		else:
+			show_properties = ''
+		paginated = True
+		sorting = []
+		for item in request.json['advancedOptions']['sort']:
+			if item[1] == 'ASC':
+				opt = (item[0], pymongo.ASCENDING)
+			else:
+				opt = (item[0], pymongo.DESCENDING)
+			sorting.append(opt)
+		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties, sorting)
+		if result == []:
+			errors.append('No records were found matching your search criteria.')
+		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
 
 @corpus.route('/export-search', methods=['GET', 'POST'])
 def export_search():
@@ -429,14 +466,21 @@ def save_upload():
 			# Make sure files exist in the uploads folder
 			if len(os.listdir(mydir)) > 0:
 				# If the category or branch node does not exist, create it
-				if len(list(corpus_db.find({'_id': node_metadata['_id'], 'path': node_metadata['path']}))) == 0:
-					print('Node does not exist. Creating one.')					
-					corpus_db.insert_one(node_metadata)
+				"""
+				This section has the effect of forcing unique _id's, so it
+				will have to be changed.
+				"""
+				# parent = list(corpus_db.find({'_id': node_metadata['_id'], 'path': node_metadata['path']}))
+				# if len(parent) == 0:
+				# 	try:					
+				# 		corpus_db.insert_one(node_metadata)
+				# 	except:
+				# 		print('Could not create a RawData node.')
 				# Now start creating a data manifest for each file and inserting it
 				for filename in os.listdir(mydir):
 					filepath = os.path.join(mydir, filename)
 					path = node_metadata['path'] + node_metadata['_id'] + ','
-					manifest = {'_id': filename.strip('.json'), 'namespace': 'we1sv1.1', 'path': path}
+					manifest = {'_id': os.path.splitext(filename)[0], 'namespace': 'we1sv1.1', 'path': path}
 					try:
 						with open(filepath, 'rb') as f:
 							doc = json.loads(f.read())
@@ -500,33 +544,44 @@ def clear():
 	Disable this for production.
 	"""
 	corpus_db.delete_many({})
+	return 'success'
 
 
-@corpus.route('/search2', methods=['GET', 'POST'])
-def search2():
-	""" Page for searching Corpus manifests."""
-	scripts = ['js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery.twbsPagination.min.js', 'js/corpus/corpus.js', 'js/corpus/search.js']
-	styles = ['css/query-builder.default.css']	
-	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/search', 'label': 'Search Collections'}]
-	if request.method == 'GET':
-		return render_template('corpus/search2.html', scripts=scripts, styles=styles, breadcrumbs=breadcrumbs)
+
+@corpus.route('/launch-jupyter', methods=['GET', 'POST'])
+def launch_jupyter():
+	""" Experimental Page to launch a Jupyter notebook."""
 	if request.method == 'POST':
-		query = request.json['query']
-		query = {}
-		page = request.json['page']
-		limit = request.json['limit']
-		show_properties = request.json['show_properties']
-		paginated = True
-		# result = list(corpus_db.find(
-		# 	query)
-		# 	#projection=show_properties)
-		# )
-		# num_pages = 1
-		# errors = []
-		# print(result)
-		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties)
-		print(result)
-		if result == []:
-			errors.append('No records were found matching your search criteria.')
-		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
-
+		try:
+			query = request.json['query']
+			limit = int(request.json['advancedOptions']['limit'])
+			sorting = []
+			if request.json['advancedOptions']['show_properties'] != []:
+				show_properties = request.json['advancedOptions']['show_properties']
+			else:
+				show_properties = '\'\''
+			sorting = []
+			for item in request.json['advancedOptions']['sort']:
+				if item[1] == 'ASC':
+					opt = (item[0], pymongo.ASCENDING)
+				else:
+					opt = (item[0], pymongo.DESCENDING)
+				sorting.append(opt)
+			sorting = "[('_id', pymongo.ASCENDING)]"
+			q = 'result = list(corpus_db.find(' + str(query) + ', '
+			q += 'limit=' + str(limit) + ', '
+			q += 'projection=' + str(show_properties) + ')'
+			if sorting != []:
+				q += '.sort(' + str(sorting) + ')'
+			q += ')'
+			template_path = os.path.join('app', 'jupyter_notebook_template.ipynb')
+			with open(template_path, 'r') as f:
+				doc = f.read()
+			doc = doc.replace('USER_QUERY', q)
+			file_path = os.path.join('app', 'WMS_query.ipynb')
+			with open(file_path, 'w') as f:
+				f.write(doc)
+			subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
+			return 'success'
+		except:
+			return 'error'

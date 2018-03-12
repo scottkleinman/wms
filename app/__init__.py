@@ -36,6 +36,14 @@ app.config.from_pyfile('config.py')
 def todo():
 	return render_template('todo.html')
 
+@app.route('/thought-experiments/<name>')
+def thought_experiments(name):
+	filename = os.path.join('app/static/markdown', name + '.md')
+	with open(filename, 'r') as f:
+		md = f.read()	
+	html = markdown.markdown(md, ['markdown.extensions.extra'])
+	return render_template('thought_experiments.html', html=html)
+
 @app.route('/')
 def home():
     return render_template('index.html')

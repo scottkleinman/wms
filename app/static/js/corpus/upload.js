@@ -71,7 +71,7 @@ myDropzone.on("queuecomplete", function(progress) {
   .done(function(response) {
     response = JSON.parse(response);
     if (response['errors']) {
-      alert(JSON.stringify(response['errors']));
+      //alert(JSON.stringify(response['errors']));
       var error_files = []
       $.each(response['errors'], function(index, value) {
         value = value.replace('The <code>_id</code> <strong>', '')
@@ -84,13 +84,15 @@ myDropzone.on("queuecomplete", function(progress) {
           $(this).next().html('The file could not be imported because a manifest with the same <code>_id</code> already exists in the database.');
         }
       });
-      msg = '<p>The import contained one or more errors. See the individual files below for details.</p>'
+      msg = '<p>The import contained one or more errors. See the individual files below for details.</p>';
+      bootbox.alert({
+        message: msg + '<p>' + JSON.stringify(error_files) + '</p>'
+      });  
     } else {
-      msg = '<p>The data was imported successfully.</p>'
+      bootbox.alert({
+        message: '<p>The data was imported successfully.</p>'
+      });  
     }
-    bootbox.alert({
-      message: msg + '<p>' + JSON.stringify(error_files) + '</p>',
-    });
   });
   $('#cancelAll').html('<i class="fa fa-trash"></i> <span>Delete all</span>');
 });

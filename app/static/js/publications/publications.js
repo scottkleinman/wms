@@ -185,7 +185,7 @@ function searchPubs(data) {
 			var link = '/publications/display/' + item['_id'];
 			out += '<h4><a href="' + link + '">' + item['_id'] + '</a></h4><br>';
 			$.each(item, function (key, value) {
-				value = value.toString();
+				value = JSON.stringify(value);
 				out += '<code>'+ key +'</code>: ' + value + '<br>';
 			});
 			out += '<hr>';

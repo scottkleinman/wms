@@ -79,6 +79,20 @@ def make_dir(folder):
 		os.makedirs(folder)
 
 
+def NestedDictValues(d):
+	""" Yields all values in a multilevel dict. Returns a generator
+	from which can be cast as a list.
+	"""
+	for v in d.values():
+		if isinstance(v, list):
+			yield from NestedDictValues(v[0])
+			break
+		if isinstance(v, dict):
+			yield from NestedDictValues(v)
+		else:
+			yield v
+
+
 def paginate(iterable, page_size):
 	"""Returns a generator with a list sliced into pages by the designated size. If 
 	the generator is converted to a list called `pages`, and individual page can 
@@ -218,6 +232,8 @@ def create_record(manifest):
 	Takes a manifest dict and returns a list of errors if any.
 	"""
 	errors = []
+	print('MANIFEST')
+	print(manifest)
 	try:
 		assert manifest['_id'] not in corpus_db.distinct('_id')
 		corpus_db.insert_one(manifest)
@@ -280,17 +296,19 @@ def search_collections(values):
 		return [], 1, errors
 
 
-def search_corpus(query, limit, paginated, page, show_properties):
+def search_corpus(query, limit, paginated, page, show_properties, sorting):
 	"""Uses the query generated in /search2 and returns the search results.
 	"""
 	page_size = 10
 	errors = []
 	if len(list(corpus_db.find())) > 0:
-		result = list(corpus_db.find(
+		result = corpus_db.find(
 			query,
-			limit=limit)
-			#projection=show_properties)
-		)
+			limit=limit,
+			projection=show_properties)
+		if sorting != []:
+			result = result.sort(sorting)
+		result = list(result)
 		# Double the result for testing
 		# result = result + result + result + result + result
 		# result = result + result + result + result + result

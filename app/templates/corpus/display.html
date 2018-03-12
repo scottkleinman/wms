@@ -27,6 +27,11 @@
     <li class="nav-item">
         <a class="nav-link" id="optional-tab" data-toggle="tab" href="#optional" role="tab" aria-controls="optional" aria-selected="false">Optional Properties</a>
     </li>
+    {% if manifest['content'] %}
+    <li class="nav-item">
+        <a class="nav-link" id="manifest-content-tab" data-toggle="tab" href="#manifest-content" role="tab" aria-controls="manifest-content" aria-selected="false">Content</a>
+    </li>
+    {% endif %}
 </ul>
 <div id="manifestCard"></div>
 </form>

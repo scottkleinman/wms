@@ -581,6 +581,8 @@ def launch_jupyter():
 			file_path = os.path.join('app', 'WMS_query.ipynb')
 			with open(file_path, 'w') as f:
 				f.write(doc)
+			# This works but breaks the Flask process, even with shell=True
+			# subprocess.call(['jupyter', 'notebook'], shell=False)
 			subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
 			return 'success'
 		except:

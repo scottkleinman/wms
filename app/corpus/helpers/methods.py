@@ -232,8 +232,6 @@ def create_record(manifest):
 	Takes a manifest dict and returns a list of errors if any.
 	"""
 	errors = []
-	print('MANIFEST')
-	print(manifest)
 	try:
 		assert manifest['_id'] not in corpus_db.distinct('_id')
 		corpus_db.insert_one(manifest)

@@ -53,14 +53,14 @@ function createManifest(jsonform) {
 }
 
 
-function deleteManifest(id) {
+function deleteManifest(name) {
 	/* Deletes a manifest
-	   Input: An _id value
+	   Input: A name value
 	   Returns: An array of errors for display */
 	$.ajax({
 		method: "POST",
 		url: "/corpus/delete-manifest",
-		data: JSON.stringify({"id": id}),
+		data: JSON.stringify({"name": name}),
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
@@ -69,7 +69,7 @@ function deleteManifest(id) {
 			msg = '<p>Could not delete the manifest because of the following errors:</p>' + errors;
 		}
 		else {
-			msg = '<p>The manifest for <code>' + id + '</code> was deleted.</p>';
+			msg = '<p>The manifest for <code>' + name + '</code> was deleted.</p>';
 		}
 	    bootbox.alert({
         message: msg,
@@ -151,8 +151,8 @@ function searchCorpus(data) {
 			// Make the result into a string
 			var out = '';
 			$.each(result, function (i, item) {
-				var link = '/corpus/display/' + item['_id'];
-				out += '<h4><a href="' + link + '">' + item['_id'] + '</a></h4><br>';
+				var link = '/corpus/display/' + item['name'];
+				out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>';
 				$.each(item, function (key, value) {
 					value = JSON.stringify(value);
 					if (key == 'content' && value.length > 200) {
@@ -236,7 +236,7 @@ function sendExport(jsonform) {
 }
 
 
-function updateManifest(jsonform, id) {
+function updateManifest(jsonform, name) {
 	/* Updates the displayed manifest
 	   Input: A JSON serialisation of the form values
 	   Returns: A copy of the manifest and an array of errors for display */
@@ -286,8 +286,8 @@ $(document).ready(function() {
 
 	/* Handles the Display form on the index page */
 	$('#go').click(function(e){
-		var id = $('#display').val();
-		window.location = '/corpus/display/' + id; 
+		var name = $('#display').val();
+		window.location = '/corpus/display/' + name; 
 	});
 	$('#display').on('keypress',function(e){
 	 var key = (e.keyCode || e.which);
@@ -347,7 +347,7 @@ $(document).ready(function() {
 			default:
 			var template = $('#generic-template').html();
 			$('#manifestCard').html(template);
-			$('#_id').val(',' + val + ',');
+			$('#name').val(',' + val + ',');
 		}
 		$('.nav-tabs a[href="#required"]').tab('show');
 	});
@@ -375,7 +375,7 @@ $(document).ready(function() {
 		e.preventDefault();
 		if ($('#update').html() == 'Edit') {
 			$('form').find('input, textarea, select').each(function(){
-				if ($(this).attr('id') != '_id' && $(this).attr('id') != 'manifest-content') {
+				if ($(this).attr('id') != 'name' && $(this).attr('id') != 'manifest-content') {
 					$(this).prop('readonly', false);
 					$(this).removeClass('disabled');
 				}
@@ -386,21 +386,21 @@ $(document).ready(function() {
 			});
 			$('#update').html('Update');
 		} else {
-	    	var id = $('#_id').val();
+	    	var name = $('#name').val();
 		    bootbox.confirm({
-		        message: 'Are you sure you wish to update the record for <code>' + id + '</code>?',
+		        message: 'Are you sure you wish to update the record for <code>' + name + '</code>?',
 		        buttons: {
 		            confirm: {label: 'Yes', className: 'btn-success'},
 		            cancel: {label: 'No', className: 'btn-danger'}
 		        },
 		        callback: function (result) {
 		        	if (result == true) {
-		        		var id = $('#_id').val();
+		        		var name = $('#name').val();
 		        		var path = $('#path').val();
 		        		var jsonform =  jsonifyForm($('#manifestForm'));
-		        		$.extend(jsonform, {'_id': id});
+		        		$.extend(jsonform, {'name': name});
 		        		$.extend(jsonform, {'path': path});
-		        		updateManifest(jsonform, id);
+		        		updateManifest(jsonform, name);
 		        	}
 		        }
 		    });
@@ -411,16 +411,16 @@ $(document).ready(function() {
 	/* Handles the Delete button */
 	$('#delete').click(function(e){
 		e.preventDefault();
-    	var id = $('#_id').val();
+    	var name = $('#name').val();
 	    bootbox.confirm({
-	        message: 'Are you sure you wish to delete <code>' + id + '</code>?',
+	        message: 'Are you sure you wish to delete <code>' + name + '</code>?',
 	        buttons: {
 	            confirm: {label: 'Yes', className: 'btn-success'},
 	            cancel: {label: 'No', className: 'btn-danger'}
 	        },
 	        callback: function (result) {
 	        	if (result == true) {
-	        		deleteManifest(id);
+	        		deleteManifest(name);
 	        	}
 	        }
 	    });
@@ -508,19 +508,27 @@ $(document).ready(function() {
 	});
 
 
-	/* Handles the Search Export feature */
-	$('#exportSearchResults').click(function(e) {
-		e.preventDefault();
-		data = {
-			'query': $('#query').val(),
-			'regex': $('#regex').is(':checked'),
-			'limit': $('#limit').val(),
-			'properties': $('#properties').val(),
-			'page': 1,
-			'paginated': false
-		}
-		exportSearch(data);
-	});
+	// /* Handles the Search Export feature */
+	// $('#exportSearchResults').click(function(e) {
+	// 	e.preventDefault();
+	// 	// data = {
+	// 	// 	'query': $('#query').val(),
+	// 	// 	'regex': $('#regex').is(':checked'),
+	// 	// 	'limit': $('#limit').val(),
+	// 	// 	'properties': $('#properties').val(),
+	// 	// 	'page': 1,
+	// 	// 	'paginated': false
+	// 	// }
+	// 	var querystring = JSON.stringify($('#builder').queryBuilder('getMongo'), undefined, 2);
+	// 	var advancedOptions = JSON.stringify(serialiseAdvancedOptions(), undefined, 2);	
+	// 	data = {
+	// 		'query': JSON.parse(query),
+	// 		'advancedOptions': JSON.parse(advancedOptions),
+	// 		'paginated': false
+	// 	};
+	// 	alert(JSON.stringify(data));
+	// 	exportSearch(data);
+	// });
 
 
 	/* Toggles the search form */

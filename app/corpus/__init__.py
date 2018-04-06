@@ -1,5 +1,14 @@
 import os, tabulator, itertools, requests, json, re, zipfile, shutil
 import subprocess
+import yaml
+
+# For various solutions to dealing with ObjectID, see
+# https://stackoverflow.com/questions/16586180/typeerror-objectid-is-not-json-serializable
+# If speed becomes an issue: https://github.com/mongodb-labs/python-bsonjs
+from bson import BSON
+from bson import json_util
+JSON_UTIL = json_util.default
+
 # from datetime import datetime
 from jsonschema import validate, FormatChecker
 # from tabulator import Stream
@@ -42,7 +51,9 @@ def create():
 	"""Create manifest page."""
 	scripts = ['js/parsley.min.js', 'js/corpus/corpus.js']
 	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/create', 'label': 'Create Collection'}]
-	return render_template('corpus/create.html', scripts=scripts, breadcrumbs=breadcrumbs)
+	with open("app/templates/corpus/template_config.yml", 'r') as stream:
+		templates = yaml.load(stream)
+	return render_template('corpus/create.html', scripts=scripts, templates=templates, breadcrumbs=breadcrumbs)
 
 
 @corpus.route('/create-manifest', methods=['GET', 'POST'])
@@ -50,12 +61,12 @@ def create_manifest():
 	""" Ajax route for creating manifests."""
 	errors = []
 	data = request.json
-	data['namespace'] = 'we1sv1.1'
-	# Set id and path by branch
+	data['namespace'] = 'we1sv1.2'
+	# Set name and path by branch
 	if data['nodetype'] == 'collection':
 		data['path'] = ',Corpus,'
 	elif data['nodetype'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
-		data['_id'] = data['nodetype']
+		data['name'] = data['nodetype']
 	else:
 		pass
 	if not data['path'].startswith(',Corpus,'):
@@ -91,7 +102,7 @@ def create_manifest():
 		<a href="/schema" target="_blank">manifest schema</a>.''' 
 		errors.append(msg)
 
-	manifest = json.dumps(manifest, indent=2, sort_keys=False)
+	manifest = json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL)
 	if len(errors) > 0:
 		error_str = '<ul>'
 		for item in errors:
@@ -103,15 +114,15 @@ def create_manifest():
 	return json.dumps(response)
 
 
-@corpus.route('/display/<_id>')
-def display(_id):
+@corpus.route('/display/<name>')
+def display(name):
 	""" Page for displaying Corpus manifests."""
 	scripts = ['js/parsley.min.js', 'js/corpus/corpus.js']
 	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/display', 'label': 'Display Collection'}]
 	errors = []
 	manifest = {}
 	try:
-		result = corpus_db.find_one({'_id': _id})
+		result = corpus_db.find_one({'name': name})
 		assert result != None
 		for key, value in result.items():
 			if isinstance(value, list):
@@ -128,15 +139,17 @@ def display(_id):
 				manifest[key] = str(value)
 		if manifest['path'] == ',Corpus,':
 			nodetype = 'collection'
-		elif manifest['_id'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
-			nodetype = manifest['_id'].lower()
+		elif manifest['name'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
+			nodetype = manifest['name'].lower()
 		else:
 			nodetype = 'branch'
+		with open("app/templates/corpus/template_config.yml", 'r') as stream:
+			templates = yaml.load(stream)
 	except:
 		errors.append('Unknown Error: The manifest does not exist or could not be loaded.')
 	return render_template('corpus/display.html', scripts=scripts,
 		breadcrumbs=breadcrumbs, manifest=manifest, errors=errors,
-		nodetype=nodetype)
+		nodetype=nodetype, templates=templates)
 
 
 @corpus.route('/update-manifest', methods=['GET', 'POST'])
@@ -144,12 +157,12 @@ def update_manifest():
 	""" Ajax route for updating manifests."""
 	errors = []
 	data = request.json
-	data['namespace'] = 'we1sv1.1'
-	# Set id and path by branch
+	data['namespace'] = 'we1sv1.2'
+	# Set name and path by branch
 	if data['path'] == ',Corpus,':
 		data['nodetype'] = 'collection'
-	elif data['_id'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
-		data['nodetype'] = data['_id']
+	elif data['name'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
+		data['nodetype'] = data['name']
 	else:
 		data['nodetype'] = 'branch'
 	if not data['path'].startswith(',Corpus,'):
@@ -205,7 +218,7 @@ def send_export():
 	data = request.json
 	# The user only wants to print the manifest
 	if data['exportoptions'] == ['manifestonly']:
-		query = {'_id': data['_id'], 'path': data['path']}
+		query = {'name': data['name'], 'path': data['path']}
 		try:
 			result = corpus_db.find_one(query)
 			assert result != None
@@ -213,8 +226,8 @@ def send_export():
 			for key, value in result.items():
 				if value != '' and value != []:
 					manifest[key] = value
-			manifest = json.dumps(manifest, indent=2, sort_keys=False)
-			filename = data['_id'] + '.json'
+			manifest = json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL)
+			filename = data['name'] + '.json'
 			doc = filename
 			methods.make_dir('app/temp')
 			filepath = os.path.join('app/temp', filename)
@@ -225,24 +238,25 @@ def send_export():
 	# The user wants a zip of multiple data documents
 	else:
 		# Get the exportoptions with the correct case
-		make_dir('app/temp/Corpus')
-		id = data['_id']
+		methods.make_dir('app/temp/Corpus')
+		name = data['name']
 		path = data['path']
 		# Ensures that there is a Corpus and collection folder with a collection manifest
 		methods.make_dir('app/temp/Corpus')
 		if path == ',Corpus,':
-			collection = id
+			collection = name
 		else:
 			collection = path.split(',')[2]
 		methods.make_dir('app/temp/Corpus/' + collection)
-		result = corpus_db.find_one({'path': path, '_id': collection})
-		assert result != None
+		# result = corpus_db.find_one({'path': path, 'name': collection})
+		result = corpus_db.find_one({'path': path})
+		# assert result != None
 		manifest = {}
 		for key, value in result.items():
 			if value != '' and value != []:
 				manifest[key] = value
-		manifest = json.dumps(manifest, indent=2, sort_keys=False)
-		filename = id + '.json'
+		manifest = json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL)
+		filename = name + '.json'
 		filepath = os.path.join('app/temp/Corpus', filename)
 		with open(filepath, 'w') as f:
 			f.write(manifest)
@@ -256,11 +270,11 @@ def send_export():
 			if option.lower() in exportopts:
 				exportoptions.append(option)
 			else:
-				exclude.append(',Corpus,' + ',' + id + ',' + option + ',.*')
+				exclude.append(',Corpus,' + ',' + name + ',' + option + ',.*')
 		# We have a path and a list of paths to exclude
 		excluded = '|'.join(exclude)
 		excluded = re.compile(excluded)
-		regex_path = re.compile(path + id + ',.*')
+		regex_path = re.compile(path + name + ',.*')
 		result = corpus_db.find(
 			{'path': {
 				'$regex': regex_path,
@@ -270,27 +284,27 @@ def send_export():
 		for item in list(result):
 			# Handle schema node manifests
 			path = item['path'].replace(',', '/')
-			if item['_id'] in exportoptions:
-				folder_path = os.path.join(path, item['_id'])
+			if item['name'] in exportoptions:
+				folder_path = os.path.join(path, item['name'])
 				methods.make_dir('app/temp' + folder_path)
 				folder = 'app/temp' + path
-				doc = item['_id'] + '.json'
+				doc = item['name'] + '.json'
 			# Handle data and branches
 			else:
 				# If the document has content, just give it a filename
 				try:
 					assert item['content']
-					doc = item['_id'] + '.json'
+					doc = item['name'] + '.json'
 					folder = 'app/temp' + path
 					methods.make_dir(folder)
 				# Otherwise, use it to create a folder with a manifest file
 				except:
-					path = os.path.join(path, item['_id'])
+					path = os.path.join(path, item['name'])
 					folder = 'app/temp' + path
 					methods.make_dir(folder)
-					doc = item['_id'] + '.json'
+					doc = item['name'] + '.json'
 			filepath = os.path.join(folder, doc)
-			output = json.dumps(item, indent=2, sort_keys=False)
+			output = json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL)
 			with open(filepath, 'w') as f:
 				f.write(output)
 		# Zip up the file structure
@@ -362,33 +376,49 @@ def search2():
 		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties, sorting)
 		if result == []:
 			errors.append('No records were found matching your search criteria.')
-		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
+		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors}, default=JSON_UTIL)
 
 @corpus.route('/export-search', methods=['GET', 'POST'])
 def export_search():
 	""" Ajax route for exporting search results."""
 	if request.method == 'POST':
-		result, num_pages, errors = methods.search_collections(request.json)
+		query = request.json['query']
+		page = 1
+		limit = int(request.json['advancedOptions']['limit'])
+		sorting = []
+		if request.json['advancedOptions']['show_properties'] != []:
+			show_properties = request.json['advancedOptions']['show_properties']
+		else:
+			show_properties = ''
+		paginated = False
+		sorting = []
+		for item in request.json['advancedOptions']['sort']:
+			if item[1] == 'ASC':
+				opt = (item[0], pymongo.ASCENDING)
+			else:
+				opt = (item[0], pymongo.DESCENDING)
+			sorting.append(opt)
+		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties, sorting)
 		if len(result) == 0:
 			errors.append('No records were found matching your search criteria.')
 		# Need to write the results to temp folder
 		for item in result:
-			filename = item['_id'] + '.json'
+			filename = item['name'] + '.json'
 			filepath = os.path.join('app/temp', filename)
 			with open(filepath, 'w') as f:
-				f.write(json.dumps(item, indent=2, sort_keys=False))
+				f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
 		# Need to zip up multiple files
 		if len(result) > 1:
 			filename = 'search_results.zip'
 			methods.zipfolder('app/temp', 'search_results')
-		return json.dumps({'filename': filename, 'errors': errors})
+		return json.dumps({'filename': filename, 'errors': errors}, default=JSON_UTIL)
 
 
 @corpus.route('/delete-manifest', methods=['GET', 'POST'])
 def delete_manifest():
 	""" Ajax route for deleting manifests."""
 	errors = []
-	msg = methods.delete_collection(request.json['id'])
+	msg = methods.delete_collection(request.json['name'])
 	if msg  != 'success':
 		errors.append(msg)
 	return json.dumps({'errors': errors})
@@ -422,8 +452,8 @@ def remove_file():
 		if request.json['branch'] != '':
 			path = path + request.json['branch'] + ','
 		filename = request.json['filename'] 
-		_id = filename.strip('.json')
-		corpus_db.delete_one({'path': path, '_id': _id})
+		name = filename.strip('.json')
+		corpus_db.delete_one({'path': path, 'name': name})
 		# Now delete the file (if it exists) in the uploads folder
 		mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 		myfile = os.path.join(mydir, filename)
@@ -445,32 +475,32 @@ def save_upload():
 		for key, value in request.json.items():
 			if key not in exclude and value != '' and value != []:
 				node_metadata[key] = value
-		# Set the _id and path
+		# Set the name and path
 		if request.json['collection'].startswith(',Corpus,'):
 			collection = request.json['collection']
 		else:
 			collection = ',Corpus,' + request.json['collection']
 		# Make sure the collection exists in the database
 		try:
-			result = list(corpus_db.find({'path': ',Corpus,', '_id': request.json['collection']}))
+			result = list(corpus_db.find({'path': ',Corpus,', 'name': request.json['collection']}))
 			assert result != []
-			# Set the _id and path for the new manifest
+			# Set the name and path for the new manifest
 			node_metadata = {}
 			if request.json['branch'] != '':
-				node_metadata['_id'] = request.json['branch']
+				node_metadata['name'] = request.json['branch']
 				node_metadata['path'] = collection + request.json['category'] + ','
 			else:
-				node_metadata['_id'] = request.json['category']
+				node_metadata['name'] = request.json['category']
 				node_metadata['path'] = collection + ','
 			mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 			# Make sure files exist in the uploads folder
 			if len(os.listdir(mydir)) > 0:
 				# If the category or branch node does not exist, create it
 				"""
-				This section has the effect of forcing unique _id's, so it
+				This section has the effect of forcing unique names, so it
 				will have to be changed.
 				"""
-				# parent = list(corpus_db.find({'_id': node_metadata['_id'], 'path': node_metadata['path']}))
+				# parent = list(corpus_db.find({'name': node_metadata['name'], 'path': node_metadata['path']}))
 				# if len(parent) == 0:
 				# 	try:					
 				# 		corpus_db.insert_one(node_metadata)
@@ -479,13 +509,13 @@ def save_upload():
 				# Now start creating a data manifest for each file and inserting it
 				for filename in os.listdir(mydir):
 					filepath = os.path.join(mydir, filename)
-					path = node_metadata['path'] + node_metadata['_id'] + ','
-					manifest = {'_id': os.path.splitext(filename)[0], 'namespace': 'we1sv1.1', 'path': path}
+					path = node_metadata['path'] + node_metadata['name'] + ','
+					manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv1.2', 'path': path}
 					try:
 						with open(filepath, 'rb') as f:
 							doc = json.loads(f.read())
 							for key, value in doc.items():
-								if key not in ['_id', 'namespace', 'path']:
+								if key not in ['name', 'namespace', 'path']:
 									manifest[key] = value
 					except:
 						errors.append('<p>The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
@@ -497,7 +527,7 @@ def save_upload():
 						errors = errors + result
 					except:
 						print('Could not validate manifest for ' + filename)
-						errors.append('<p>A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.')
+						errors.append('<p>A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.</p>')
 				# We're done. Empty the uploads folder.
 				mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 				list(map(os.unlink, (os.path.join(mydir,f) for f in os.listdir(mydir))))
@@ -567,7 +597,7 @@ def launch_jupyter():
 				else:
 					opt = (item[0], pymongo.DESCENDING)
 				sorting.append(opt)
-			sorting = "[('_id', pymongo.ASCENDING)]"
+			sorting = "[('name', pymongo.ASCENDING)]"
 			q = 'result = list(corpus_db.find(' + str(query) + ', '
 			q += 'limit=' + str(limit) + ', '
 			q += 'projection=' + str(show_properties) + ')'

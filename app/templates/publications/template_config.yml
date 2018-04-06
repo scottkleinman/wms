@@ -1,0 +1,46 @@
+---
+publication-template:
+- required:
+  - name: name
+    fieldtype: text
+    required: true
+  - name: path
+    fieldtype: text
+    required: true
+    value: ",Publications,"
+  - name: publication
+    fieldtype: text
+    required: true
+  - name: description
+    fieldtype: textarea
+    required: true
+  - name: publisher
+    fieldtype: text
+    required: true
+  - name: date
+    fieldtype: textarea
+    required: true
+    placeholder: List each date on a separate line. Date ranges should use the separate start and end dates with commas. Valid formats are YYYY-MM-DD and YYYY-MM-DDTHH:MM:SS.
+- optional:
+  - name: edition
+    fieldtype: text
+  - name: contentType
+    fieldtype: text
+  - name: language
+    fieldtype: select
+    default: eng
+  - name: country
+    fieldtype: select
+    default: US
+  - name: authors
+    fieldtype: textarea
+    placeholder: List each author on a separate line.
+  - name: title
+    fieldtype: text
+  - name: altTitle
+    fieldtype: text
+  - name: label
+    fieldtype: text
+  - name: notes
+    placeholder: List each note on a separate line.
+    fieldtype: textarea

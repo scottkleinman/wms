@@ -5,7 +5,7 @@
 <p>{{ error|safe }}</p>
 {% endfor %}
 {% else %}
-{% set fields = ['altTitle', 'authors', 'collectors', 'content', 'date', 'description', 'documentType', 'edition', '_id', 'label', 'mimetype', 'OCR', 'path', 'processes', 'publications', 'publisher', 'queryterms', 'relationships', 'rights', 'title', 'workstation'] %}
+{% set fields = ['altTitle', 'authors', 'collectors', 'content', 'date', 'description', 'documentType', 'edition', 'name', 'label', 'mimetype', 'OCR', 'path', 'processes', 'publications', 'publisher', 'queryterms', 'relationships', 'rights', 'title', 'workstation'] %}
 <style type="text/css">
 .query-builder .btn-primary.active, .query-builder .btn-primary.focus,
 .query-builder .btn-primary:active, .query-builder .btn-primary:focus,
@@ -60,7 +60,7 @@ td { cursor: move !important;}
             <br>
             <button id="view-query" class="btn btn-outline-editorial">View Query</button>
             <button id="search-query" class="btn btn-outline-editorial">Search</button>
-            <button id="launch-jupyter" class="btn btn-outline-editorial"><i class="fa fa-rocket"></i></button>
+            <button title="Launch Jupyter notebook" id="launch-jupyter" class="btn btn-outline-editorial"><i class="fa fa-rocket"></i></button>
         </div>
     </div>
 </div>
@@ -94,7 +94,7 @@ td { cursor: move !important;}
             </tr>
         </thead>
         <tbody>
-            {% set shown = ['date', 'description', '_id', 'path', 'title'] %}
+            {% set shown = ['date', 'description', 'name', 'path', 'title'] %}
             {% for item in fields %}
             <tr data-id="{{loop.index}}" data-name="{{item}}" data-direction="none" data-show="{{'true' if item in shown}}">
                         <td>

@@ -74,14 +74,14 @@ myDropzone.on("queuecomplete", function(progress) {
       //alert(JSON.stringify(response['errors']));
       var error_files = []
       $.each(response['errors'], function(index, value) {
-        value = value.replace('The <code>_id</code> <strong>', '')
+        value = value.replace('The <code>name</code> <strong>', '')
         value = value.replace('</strong> already exists in the database.', '')
         value += '.json'
         error_files.push(value);
       });
       $('[data-dz-name]').each(function() {
         if($.inArray($(this).html(), error_files) !== -1) {
-          $(this).next().html('The file could not be imported because a manifest with the same <code>_id</code> already exists in the database.');
+          $(this).next().html('The file could not be imported because a manifest with the same <code>name</code> already exists in the database.');
         }
       });
       msg = '<p>The import contained one or more errors. See the individual files below for details.</p>';

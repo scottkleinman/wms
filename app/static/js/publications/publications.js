@@ -53,14 +53,14 @@ function createManifest(jsonform) {
 }
 
 
-function deleteManifest(id) {
+function deleteManifest(name) {
 	/* Deletes a manifest
-	   Input: An _id value
+	   Input: A name value
 	   Returns: An array of errors for display */
 	$.ajax({
 		method: "POST",
 		url: "/publications/delete-manifest",
-		data: JSON.stringify({"id": id}),
+		data: JSON.stringify({"name": name}),
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
@@ -69,7 +69,7 @@ function deleteManifest(id) {
 			msg = '<p>Could not delete the manifest because of the following errors:</p>' + errors;
 		}
 		else {
-			msg = '<p>The manifest for <code>' + id + '</code> was deleted.</p>';
+			msg = '<p>The manifest for <code>' + name + '</code> was deleted.</p>';
 		}
 	    bootbox.alert({
         message: msg,
@@ -94,11 +94,11 @@ function exportPublicationManifest() {
 	   Input: Values from the search form
 	   Returns: An array containing results and errors for display */
 
-	filename = $('#_id').val() + '.json';
+	filename = $('#name').val() + '.json';
 	$.ajax({
 		method: "POST",
 		url: "/publications/export-manifest",
-		data: JSON.stringify({'_id': $('#_id').val()}),
+		data: JSON.stringify({'name': $('#name').val()}),
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
@@ -182,8 +182,8 @@ function searchPubs(data) {
 		// Make the result into a string
 		var out = '';
 		$.each(result, function (i, item) {
-			var link = '/publications/display/' + item['_id'];
-			out += '<h4><a href="' + link + '">' + item['_id'] + '</a></h4><br>';
+			var link = '/publications/display/' + item['name'];
+			out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>';
 			$.each(item, function (key, value) {
 				value = JSON.stringify(value);
 				out += '<code>'+ key +'</code>: ' + value + '<br>';
@@ -231,7 +231,7 @@ function searchPubs(data) {
 }
 
 
-function updateManifest(jsonform, id) {
+function updateManifest(jsonform, name) {
 	/* Updates the displayed manifest
 	   Input: A JSON serialisation of the form values
 	   Returns: A copy of the manifest and an array of errors for display */
@@ -281,8 +281,8 @@ $(document).ready(function() {
 
 	/* Handles the Display form */
 	$('#go').click(function(e){
-		var id = $('#display').val();
-		window.location = '/publications/display/' + id; 
+		var name = $('#display').val();
+		window.location = '/publications/display/' + name; 
 	});
 	$('#display').on('keypress',function(e){
 	 var key = (e.keyCode || e.which);
@@ -335,26 +335,26 @@ $(document).ready(function() {
 		e.preventDefault();
 		if ($('#update').html() == 'Edit') {
 			$('form').find('input, textarea, select').each(function(){
-				if ($(this).attr('id') != '_id') {
+				if ($(this).attr('id') != 'name') {
 					$(this).prop('readonly', false);
 					$(this).removeClass('disabled');
 				}
 			});
 			$('#update').html('Update');
 		} else {
-	    	var id = $('#_id').val();
+	    	var name = $('#name').val();
 		    bootbox.confirm({
-		        message: 'Are you sure you wish to update the record for <code>' + id + '</code>?',
+		        message: 'Are you sure you wish to update the record for <code>' + name + '</code>?',
 		        buttons: {
 		            confirm: {label: 'Yes', className: 'btn-success'},
 		            cancel: {label: 'No', className: 'btn-danger'}
 		        },
 		        callback: function (result) {
 		        	if (result == true) {
-		        		id = $('#_id').val();
+		        		name = $('#name').val();
 		        		var jsonform =  jsonifyForm();
-		        		$.extend(jsonform, {'_id': id});
-		        		updateManifest(jsonform, id);
+		        		$.extend(jsonform, {'name': name});
+		        		updateManifest(jsonform, name);
 		        	}
 		        }
 		    });
@@ -365,16 +365,16 @@ $(document).ready(function() {
 	/* Handles the Delete button */
 	$('#delete').click(function(e){
 		e.preventDefault();
-    	var id = $('#_id').val();
+    	var name = $('#name').val();
 	    bootbox.confirm({
-	        message: 'Are you sure you wish to delete <code>' + id + '</code>?',
+	        message: 'Are you sure you wish to delete <code>' + name + '</code>?',
 	        buttons: {
 	            confirm: {label: 'Yes', className: 'btn-success'},
 	            cancel: {label: 'No', className: 'btn-danger'}
 	        },
 	        callback: function (result) {
 	        	if (result == true) {
-	        		deleteManifest(id);
+	        		deleteManifest(name);
 	        	}
 	        }
 	    });

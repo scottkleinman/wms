@@ -1,0 +1,136 @@
+---
+collection-template:
+- required:
+  - name: name
+    fieldtype: text
+    required: true
+  - name: path
+    fieldtype: text
+    required: true
+    value: ",Corpus,"
+  - name: publications
+    fieldtype: textarea
+    required: true
+    placeholder: List each publication on a separate line.
+  - name: description
+    fieldtype: textarea
+    required: true
+  - name: collectors
+    fieldtype: textarea
+    required: true
+    placeholder: List each collector on a separate line.
+  - name: date
+    fieldtype: textarea
+    required: true
+    placeholder: List each date on a separate line. Date ranges should use the separate start and end dates with commas. Valid formats are YYYY-MM-DD and YYYY-MM-DDTHH:MM:SS.
+- optional:
+  - name: workstation
+    fieldtype: text
+  - name: queryterms
+    fieldtype: textarea
+    placeholder: List each term on a separate line.
+  - name: processes
+    placeholder: List each process on a separate line.
+    fieldtype: textarea
+  - name: title
+    fieldtype: text
+  - name: altTitle
+    fieldtype: text
+  - name: label
+    fieldtype: text
+  - name: notes
+    placeholder: List each note on a separate line.
+    fieldtype: textarea
+rawdata-template:
+- required:
+  - name: name
+    fieldtype: text
+    required: true
+  - name: path
+    fieldtype: text
+    required: true
+    value: ",Corpus,RawData,"
+- optional:
+  - name: rights
+    fieldtype: text
+  - name: OCR
+    fieldtype: checkbox
+  - name: relationships
+    placeholder: List each relationship on a separate line.
+    fieldtype: textarea
+  - name: mimetype
+    fieldtype: text
+  - name: title
+    fieldtype: text
+  - name: altTitle
+    fieldtype: text
+  - name: label
+    fieldtype: text
+  - name: notes
+    placeholder: List each note on a separate line.
+    fieldtype: textarea
+processeddata-template:
+- required:
+  - name: name
+    fieldtype: text
+    required: true
+  - name: path
+    fieldtype: text
+    required: true
+    value: ",Corpus,ProcessedData,"
+  - name: processes
+    placeholder: List each process on a separate line.
+    fieldtype: textarea
+    required: true
+- optional:
+  - name: mimetype
+    fieldtype: text
+  - name: title
+    fieldtype: text
+  - name: altTitle
+    fieldtype: text
+  - name: label
+    fieldtype: text
+  - name: notes
+    placeholder: List each note on a separate line.
+    fieldtype: textarea
+branch-template:
+- required:
+  - name: name
+    fieldtype: text
+    required: true
+  - name: path
+    fieldtype: text
+    required: true
+- optional:
+  - name: mimetype
+    fieldtype: text
+  - name: title
+    fieldtype: text
+  - name: altTitle
+    fieldtype: text
+  - name: label
+    fieldtype: text
+  - name: notes
+    placeholder: List each note on a separate line.
+    fieldtype: textarea
+generic-template:
+- required:
+  - name: name
+    fieldtype: text
+    required: true
+  - name: path
+    fieldtype: text
+    required: true
+- optional:
+  - name: mimetype
+    fieldtype: text
+  - name: title
+    fieldtype: text
+  - name: altTitle
+    fieldtype: text
+  - name: label
+    fieldtype: text
+  - name: notes
+    placeholder: List each note on a separate line.
+    fieldtype: textarea

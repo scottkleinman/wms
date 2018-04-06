@@ -61,90 +61,49 @@
     <br>
     <div id="manifestCard">
         <div class="tab-content" id="collectionsForm">
+          {% set template = templates['collection-template'] %}
+          {% set required_opts = template[0]['required'] %}
+          {% set optional_opts = template[1]['optional'] %}
             <div class="tab-pane fade show active" id="required" role="tabpanel" aria-labelledby="required-tab">
+                {% for opt in required_opts %}
+                {% if not opt.skip %}
                 <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="_id">_id</label>
-                    <div class="col-sm-10">
-                        <input name="_id" id="_id" type="text" class="form-control" required>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="path">path</label>
-                    <div class="col-sm-10">
-                        <input name="path" id="path" type="text" value=",Corpus," class="form-control" required disabled="disabled">
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="publications">publications</label>
-                    <div class="col-sm-10">
-                        <textarea name="publications" id="publications" class="form-control" placeholder="List each publication on a separate line."></textarea>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="description">description</label>
-                    <div class="col-sm-10">
-                        <textarea name="description" id="description" class="form-control" required></textarea>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="collectors">collectors</label>
-                    <div class="col-sm-10">
-                        <textarea name="collectors" id="collectors" class="form-control" placeholder="List each collector on a separate line." required></textarea>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="date">date</label>
-                    <div class="col-sm-10">
-                        <textarea name="date" id="date" placeholder="List each date on a separate line. Date ranges should use the separate start and end dates with commas. Valid formats are YYYY-MM-DD and YYYY-MM-DDTHH:MM:SS." class="form-control" required></textarea>
-                    </div>
-                </div>
+                  {% if opt.fieldtype == 'text' %}
+                  <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                  <div class="col-sm-10">
+                      <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+                  </div>
+                  {% elif opt.fieldtype == 'textarea' %}
+                  <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                  <div class="col-sm-10">
+                    <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                  </div>
+                  {% endif %}
+                </div> 
+                {% endif %}
+                {% endfor %}
             </div>
             <div class="tab-pane fade" id="optional" role="tabpanel" aria-labelledby="optional-tab">
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="workstation">workstation</label>
-                    <div class="col-sm-10">
-                        <input name="workstation" id="workstation" type="text" class="form-control">
-                    </div>
+              {% for opt in optional_opts %}
+              {% if not opt.skip %}
+              <div class="form-group row">
+                {% if opt.fieldtype == 'text' %}
+                <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                <div class="col-sm-10">
+                    <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
                 </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="queryterms">queryterms</label>
-                    <div class="col-sm-10">
-                        <textarea name="queryterms" id="queryterms" class="form-control" placeholder="List each query term on a separate line."></textarea>
-                    </div>
+                {% elif opt.fieldtype == 'textarea' %}
+                <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                <div class="col-sm-10">
+                  <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
                 </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="processes">processes</label>
-                    <div class="col-sm-10">
-                        <textarea name="processes" id="processes" class="form-control" placeholder="List each process on a separate line."></textarea>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="title">title</label>
-                    <div class="col-sm-10">
-                        <input name="title" id="title" type="text" class="form-control">
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="altTitle">altTitle</label>
-                    <div class="col-sm-10">
-                        <input name="altTitle" id="altTitle" type="text" class="form-control">
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-2 col-form-label" for="label">label</label>
-                    <div class="col-sm-10">
-                        <input name="label" id="label" type="text" class="form-control">
-                    </div>
-                </div>
-                <div class="form-group row">            
-                    <label class="col-sm-2 col-form-label" for="notes">notes</label>
-                    <div class="col-sm-10">
-                        <textarea name="notes" id="notes" placeholder="List each note on a separate line." class="form-control"></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                {% endif %}
+              </div> 
+              {% endif %}
+              {% endfor %}
+            </div> <!-- /tab-pane -->
+        </div> <!-- /collectionsForm -->
+    </div> <!-- /manifestCard -->
 </div>
 </form>
 <!-- Preview -->
@@ -154,5 +113,218 @@
     <pre id="manifest"></pre>
 </div>
 
-{% include '/corpus/create-form-templates.html' %}
+<!-- include '/corpus/create-form-templates.html' -->
+<!-- Collection Form Template -->
+<script type="text/html" id="collection-template">
+  <div class="tab-content" id="collectionsForm">
+    {% set template = templates['collection-template'] %}
+    {% set required_opts = template[0]['required'] %}
+    {% set optional_opts = template[1]['optional'] %}
+      <div class="tab-pane fade show active" id="required" role="tabpanel" aria-labelledby="required-tab">
+        {% for opt in required_opts %}
+        {% if not opt.skip %}
+        <div class="form-group row">
+          {% if opt.fieldtype == 'text' %}
+          <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+          <div class="col-sm-10">
+              <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+          </div>
+          {% elif opt.fieldtype == 'textarea' %}
+          <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+          <div class="col-sm-10">
+            <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+          </div>
+          {% endif %}
+        </div> 
+        {% endif %}
+        {% endfor %}
+      </div> <!-- /tab-pane -->
+  </div> <!-- /collectionsForm -->
+</script>
+
+<!-- RawData Form Template -->
+<script type="text/html" id="rawdata-template">
+  <div class="tab-content" id="collectionsForm">
+    {% set template = templates['rawdata-template'] %}
+    {% set required_opts = template[0]['required'] %}
+    {% set optional_opts = template[1]['optional'] %}
+      <div class="tab-pane fade show active" id="required" role="tabpanel" aria-labelledby="required-tab">
+        {% for opt in required_opts %}
+        {% if not opt.skip %}
+        <div class="form-group row">
+          {% if opt.fieldtype == 'text' %}
+          <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+          <div class="col-sm-10">
+              <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+          </div>
+          {% elif opt.fieldtype == 'textarea' %}
+          <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+          <div class="col-sm-10">
+            <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+          </div>
+          {% endif %}
+        </div> 
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="tab-pane fade" id="optional" role="tabpanel" aria-labelledby="optional-tab">
+      {% for opt in optional_opts %}
+      {% if not opt.skip %}
+      <div class="form-group row">
+        {% if opt.fieldtype == 'text' %}
+        <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+        <div class="col-sm-10">
+            <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+        </div>
+        {% elif opt.fieldtype == 'textarea' %}
+        <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+        <div class="col-sm-10">
+          <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+        </div>
+        {% elif opt.fieldtype == 'checkbox' %}
+        <div class="col-sm-12">
+          <input class="form-control form-check-input" id="{{ opt.name|safe }}" name="{{ opt.name|safe }}" type="checkbox" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }} {% if opt.value %}value="{{ opt.value|safe }}"{% endif %}><label class="form-check-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+        </div>
+        {% endif %}
+      </div> 
+      {% endif %}
+      {% endfor %}
+      </div> <!-- /tab-pane -->
+  </div> <!-- /collectionsForm -->
+</script>
+
+<!-- ProcessedData Form Template -->
+<script type="text/html" id="processeddata-template">
+  <div class="tab-content" id="collectionsForm">
+    {% set template = templates['processeddata-template'] %}
+    {% set required_opts = template[0]['required'] %}
+    {% set optional_opts = template[1]['optional'] %}
+      <div class="tab-pane fade show active" id="required" role="tabpanel" aria-labelledby="required-tab">
+        {% for opt in required_opts %}
+        {% if not opt.skip %}
+        <div class="form-group row">
+          {% if opt.fieldtype == 'text' %}
+          <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+          <div class="col-sm-10">
+              <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+          </div>
+          {% elif opt.fieldtype == 'textarea' %}
+          <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+          <div class="col-sm-10">
+            <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>
+          </div>
+          {% endif %}
+        </div> 
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="tab-pane fade" id="optional" role="tabpanel" aria-labelledby="optional-tab">
+      {% for opt in optional_opts %}
+      {% if not opt.skip %}
+      <div class="form-group row">
+        {% if opt.fieldtype == 'text' %}
+        <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+        <div class="col-sm-10">
+            <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+        </div>
+        {% elif opt.fieldtype == 'textarea' %}
+        <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+        <div class="col-sm-10">
+          <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>
+        </div>
+        {% endif %}
+      </div> 
+      {% endif %}
+      {% endfor %}
+      </div> <!-- /tab-pane -->
+  </div> <!-- /collectionsForm -->
+</script>
+
+<!-- Branch Form Template -->
+<script type="text/html" id="branch-template">
+  <div class="tab-content" id="collectionsForm">
+    {% set template = templates['branch-template'] %}
+    {% set required_opts = template[0]['required'] %}
+    {% set optional_opts = template[1]['optional'] %}
+      <div class="tab-pane fade show active" id="required" role="tabpanel" aria-labelledby="required-tab">
+                {% for opt in required_opts %}
+                {% if not opt.skip %}
+                <div class="form-group row">
+                  {% if opt.fieldtype == 'text' %}
+                  <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                  <div class="col-sm-10">
+                      <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+                  </div>
+                  {% elif opt.fieldtype == 'textarea' %}
+                  <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                  <div class="col-sm-10">
+                    <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                  </div>
+                  {% endif %}
+                </div> 
+                {% endif %}
+                {% endfor %}
+            </div>
+            <div class="tab-pane fade" id="optional" role="tabpanel" aria-labelledby="optional-tab">
+              {% for opt in optional_opts %}
+              {% if not opt.skip %}
+              <div class="form-group row">
+                {% if opt.fieldtype == 'text' %}
+                <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                <div class="col-sm-10">
+                    <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+                </div>
+                {% elif opt.fieldtype == 'textarea' %}
+                <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                <div class="col-sm-10">
+                  <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                </div>
+                {% endif %}
+              </div> 
+              {% endif %}
+              {% endfor %}
+      </div> <!-- /tab-pane -->
+  </div> <!-- /collectionsForm -->
+</script>
+
+<!-- Generic Form Template -->
+<script type="text/html" id="generic-template">
+  <div class="tab-content" id="collectionsForm">
+    {% set template = templates['branch-template'] %}
+    {% set required_opts = template[0]['required'] %}
+    {% set optional_opts = template[1]['optional'] %}
+      <div class="tab-pane fade show active" id="required" role="tabpanel" aria-labelledby="required-tab">
+        {% for opt in required_opts %}
+        {% if not opt.skip %}
+        <div class="form-group row">
+            <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+            <div class="col-sm-10">
+                {% if opt.fieldtype == 'text' %}
+                <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+                {% elif opt.fieldtype == 'textarea' %}
+                <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="tab-pane fade" id="optional" role="tabpanel" aria-labelledby="optional-tab">
+        {% for opt in optional_opts %}
+        {% if not opt.skip %}
+        <div class="form-group row">
+            <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+            <div class="col-sm-10">
+                {% if opt.fieldtype == 'text' %}
+                <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>
+                {% elif opt.fieldtype == 'textarea' %}
+                <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div> <!-- /tab-pane -->
+  </div> <!-- /collectionsForm -->
+</script>
 {% endblock main %}

@@ -59,8 +59,8 @@ var schema = [{
     'size': 30
 },
 {
-    'id': '_id',
-    'label': '_id',
+    'id': 'name',
+    'label': 'name',
     'type': 'string',
     'size': 30
 },
@@ -145,7 +145,7 @@ var schema = [{
 var options = {
   allow_empty: true,
   filters: schema,
-  default_filter: '_id',
+  default_filter: 'name',
   icons: {
     add_group: 'fa fa-plus-square',
     add_rule: 'fa fa-plus-circle',
@@ -177,7 +177,7 @@ $('#view-query, #search-query, #launch-jupyter').click(function(){
   		case 'search-query':
 		 //  bootbox.alert({
 			// message: '<p>Ready to perform search.</p>'
-		 //  });
+         //  });
 		  sendQuery(querystring, advancedOptions);
 		  break;
         case 'launch-jupyter':
@@ -199,6 +199,19 @@ $('#view-query, #search-query, #launch-jupyter').click(function(){
 	  $('.has-error').find('.rule-actions > button').parent().append(message);
   }
 
+
+	/* Handles the Search Export feature */
+	$('#exportSearchResults').click(function(e) {
+		e.preventDefault();
+		var querystring = JSON.stringify($('#builder').queryBuilder('getMongo'), undefined, 2);
+		var advancedOptions = JSON.stringify(serialiseAdvancedOptions(), undefined, 2);	
+		data = {
+			'query': JSON.parse(querystring),
+			'advancedOptions': JSON.parse(advancedOptions),
+			'paginated': false
+        };
+		exportSearch(data);
+	});
 });
 
 	function sendQuery(query, advancedOptions, page = 1) {
@@ -210,7 +223,7 @@ $('#view-query, #search-query, #launch-jupyter').click(function(){
 		   	'query': JSON.parse(query),
 		   	'page': page,
 		   	'advancedOptions': JSON.parse(advancedOptions)
-		   };
+           };
 		$.ajax({
 			method: "POST",
 			url: "/corpus/search",
@@ -234,8 +247,8 @@ $('#view-query, #search-query, #launch-jupyter').click(function(){
 				// Make the result into a string
 				var out = '';
 				$.each(result, function (i, item) {
-					var link = '/corpus/display/' + item['_id'];
-					out += '<h4><a href="' + link + '">' + item['_id'] + '</a></h4><br>';
+					var link = '/corpus/display/' + item['name'];
+					out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>';
 					$.each(item, function (key, value) {
 						value = JSON.stringify(value);
 						if (key == 'content' && value.length > 200) {
@@ -316,7 +329,42 @@ $('#view-query, #search-query, #launch-jupyter').click(function(){
 	        }
 		    });
 		});
-	}
+    }
+    
+
+    function exportSearch(data) {
+        /* Exports the results of a Corpus search
+           Input: Values from the search form
+           Returns: An array containing results and errors for display */
+        $.ajax({
+            method: "POST",
+            url: "/corpus/export-search",
+            data: JSON.stringify(data),
+            contentType: 'application/json;charset=UTF-8',
+        })
+        .done(function(response) {
+            response = JSON.parse(response);
+            if (response['errors'].length != 0) {
+                result = JSON.stringify(response['errors']);
+                bootbox.alert({
+                message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
+                callback: function () {
+                    ("Error: " + textStatus + ": " + errorThrown);
+                }
+                });
+            } else {
+                window.location = '/corpus/download-export/' + response['filename'];
+            }
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            bootbox.alert({
+            message: '<p>Sorry, mate! You\'ve got an error!</p>',
+            callback: function () {
+                ("Error: " + textStatus + ": " + errorThrown);
+            }
+            });
+        });
+    }
 
 // Do some WE1S restyling
 $('.btn').removeClass('btn-dangerr');

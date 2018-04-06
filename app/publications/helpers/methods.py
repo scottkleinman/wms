@@ -1,4 +1,7 @@
 import os, tabulator, itertools, requests, json, re, zipfile, shutil
+from flask import current_app
+from bson import BSON
+from bson import json_util
 from datetime import datetime
 from jsonschema import validate, FormatChecker
 from tabulator import Stream
@@ -227,23 +230,23 @@ def create_record(manifest):
 	errors = []
 	if validate_manifest(manifest) == True:
 		try:
-			assert manifest['_id'] not in publications_db.distinct('_id')
+			assert manifest['name'] not in publications_db.distinct('name')
 			publications_db.insert_one(manifest)
 		except:
-			msg = 'The <code>_id</code> <strong>' + manifest['_id'] + '</strong> already exists in the database.'
+			msg = 'The <code>name</code> <strong>' + manifest['name'] + '</strong> already exists in the database.'
 			errors.append(msg)
 	else:
 		errors.append('Unknown Error: Could not produce a valid manifest.')
 	return errors
 
 
-def delete_publication(id):
+def delete_publication(name):
 	"""
-	Deletes a publication manifest based on _id.
+	Deletes a publication manifest based on name.
 
 	Returns 'success' or an error message string.
 	"""
-	result = publications_db.delete_one({'_id': id})
+	result = publications_db.delete_one({'name': name})
 	if result.deleted_count != 0:
 		return 'success'
 	else:
@@ -255,12 +258,13 @@ def import_manifests(source_files):
 	Loops through the source files and streams them into a dataframe, then converts
 	the dataframe to a list of manifest dicts.
 	"""
+	print('Impoooorrrrtttinng')
 	# Set up the storage functions for pandas dataframes
 	storage = Storage()
 	storage.create('data', {
-		'primaryKey': '_id',
+		'primaryKey': 'name',
 		'fields': [
-			{'name': '_id', 'type': 'string'},
+			{'name': 'name', 'type': 'string'},
 			{'name': 'publication', 'type': 'string'},
 			{'name': 'description', 'type': 'string'},
 			{'name': 'publisher', 'type': 'string'},
@@ -278,6 +282,8 @@ def import_manifests(source_files):
 	})
 	path = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 	error_list = []
+	print('source_files')
+	print(source_files)
 	for item in source_files:
 		if item.endswith('.xlsx') or item.endswith('.xls'):
 			options = {'format': 'xlsx', 'sheet': 1, 'headers': 1}
@@ -286,9 +292,9 @@ def import_manifests(source_files):
 		filepath = os.path.join(path, item)
 		with tabulator.Stream(filepath, **options) as stream:
 			try:
-				stream.headers == ['_id', 'publication', 'description', 'publisher', 'date', 'edition', 'contentType', 'language', 'country', 'authors', 'title', 'altTitle', 'label', 'notes']				
+				stream.headers == ['name', 'publication', 'description', 'publisher', 'date', 'edition', 'contentType', 'language', 'country', 'authors', 'title', 'altTitle', 'label', 'notes']				
 			except:
-				col_order = '_id, publication, description, publisher, date, edition, contentType, language, country, authors, title, altTitle, label, notes'
+				col_order = 'name, publication, description, publisher, date, edition, contentType, language, country, authors, title, altTitle, label, notes'
 				error_list.append('Error: The table headings in ' + item + ' do not match the Publications schema. Please use the headings ' + col_order + ' in that order.')
 		with tabulator.Stream(filepath, **options) as stream:
 			try:
@@ -299,17 +305,19 @@ def import_manifests(source_files):
 	manifests = []
 	properties = {}
 	data_dict = storage['data'].to_dict('index')
+	print(data_dict)
 	for key, values in data_dict.items():
 		properties = {k: v for k, v in values.items() if v is not None}
 		properties = {k: v.replace('\\n', '\n') for k, v in properties.items()}
-		properties['_id'] = key
-		properties['namespace'] = 'we1sv1.1'
+		properties['name'] = key
+		properties['namespace'] = 'we1sv1.2'
 		properties['path'] = ',Publications,'
 		if validate_manifest(properties) == True:
 			manifests.append(properties)
 		else:
 			error_list.append('Could not produce a valid manifest for <code>' + key + '</code>.')
 	# Now we're ready to insert into the database
+	print(manifests)
 	for manifest in manifests:
 		db_errors = create_record(manifest)
 		error_list = error_list + db_errors
@@ -354,10 +362,10 @@ def update_record(manifest):
 	errors = []
 	if validate_manifest(manifest) == True:
 		try:
-			id = manifest.pop('_id')
-			publications_db.update_one({'_id': id}, {'$set': manifest}, upsert=False)
+			name = manifest.pop('name')
+			publications_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
 		except:
-			msg = 'Unknown Error: The record for <code>_id</code> <strong>' + manifest['_id'] + '</strong> could not be updated.'
+			msg = 'Unknown Error: The record for <code>name</code> <strong>' + manifest['name'] + '</strong> could not be updated.'
 			errors.append(msg)
 	else:
 		errors.append('Unknown Error: Could not produce a valid manifest.')
@@ -367,6 +375,46 @@ def update_record(manifest):
 #----------------------------------------------------------------------------#
 # Currently Unused Functions
 #----------------------------------------------------------------------------#
+
+def textarea2dict(fieldname, textarea, main_key, valid_props):
+    """Converts a textarea string to a dict containing a list of 
+	properties for each line. Multiple properties should be 
+	formatted as key: value pairs. The key must be separated 
+    from the value by a space. If ": " occurs in the value, 
+	the entire value can be put in quotes. Where there is only 
+	one value, the key can be omitted, and it will be supplied
+    from main_key. A list of valid properties is supplied in 
+	valid_props. If any property is invalid the function 
+	returns a dict with only the error key and a list of errors.
+    """
+    import yaml
+    lines = textarea.split('\n')
+    all_lines = []
+    errors = []
+
+    for line in lines:
+        opts = {}
+        pattern = ', (' +'[a-z]+: ' + ')' # Assumes no camel case in the property name
+        # There are no options, and the main_key is present
+        main = main_key + '|[\'\"]' + main_key + '[\'\"]'
+        if re.search('^' + main + ': .+$', line):
+            opts[main_key] = re.sub('^' + main + ': ', '', line.strip())
+        # There are no options, and the main_key is omitted
+        elif re.search(pattern, line) == None: 
+            opts[main_key] = line.strip()
+        # Parse the options
+        else:
+            line = re.sub(pattern, '\n\\1', line) # Could be improved to handle more variations
+            opts = yaml.load(line.strip())
+            for k, v in opts.items():
+                if k not in valid_props:
+                    errors.append('The ' + fieldname + ' field is incorrectly formatted or ' + k + ' is not a valid property for the field.')
+        all_lines.append(opts)
+    if errors == []:
+        d = {fieldname: all_lines}
+    else:
+        d = {'errors' : errors}
+    return d
 
 def list_publications(page_size=10, page=1):
 	"""

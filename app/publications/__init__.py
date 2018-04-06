@@ -1,4 +1,12 @@
 import os, tabulator, itertools, requests, json, re, shutil
+import yaml
+# For various solutions to dealing with ObjectID, see
+# https://stackoverflow.com/questions/16586180/typeerror-objectid-is-not-json-serializable
+# If speed becomes an issue: https://github.com/mongodb-labs/python-bsonjs
+from bson import BSON
+from bson import json_util
+JSON_UTIL = json_util.default
+
 # from datetime import datetime
 from jsonschema import validate, FormatChecker
 # from tabulator import Stream
@@ -52,13 +60,15 @@ def create():
 	"""Create manifest page."""
 	scripts = ['js/parsley.min.js', 'js/publications/publications.js']
 	breadcrumbs = [{'link': '/publications', 'label': 'Publications'}, {'link': '/publications/create', 'label': 'Create Publication'}]
-	return render_template('publications/create.html', lang_list=lang_list, country_list=country_list, scripts=scripts, breadcrumbs=breadcrumbs)
+	with open("app/templates/publications/template_config.yml", 'r') as stream:
+		templates = yaml.load(stream)	
+	return render_template('publications/create.html', lang_list=lang_list, country_list=country_list, scripts=scripts, breadcrumbs=breadcrumbs, templates=templates)
 
 
 @publications.route('/create-manifest', methods=['GET', 'POST'])
 def create_manifest():
 	""" Ajax route for creating manifests."""
-	properties = {'namespace': 'we1sv1.1', 'path': ',Publications,'}
+	properties = {'namespace': 'we1sv1.2', 'path': ',Publications,'}
 	errors = []
 	for key, value in request.json.items():
 		if key == 'date':
@@ -82,7 +92,7 @@ def create_manifest():
 		errors.append(msg)
 
 	# Need to insert into the database
-	manifest = json.dumps(properties, indent=2, sort_keys=False)
+	manifest = json.dumps(properties, indent=2, sort_keys=False, default=JSON_UTIL)
 	if len(errors) > 0:
 		error_str = '<ul>'
 		for item in errors:
@@ -98,21 +108,21 @@ def create_manifest():
 def delete_manifest():
 	""" Ajax route for deleting manifests."""
 	errors = []
-	msg = methods.delete_publication(request.json['id'])
+	msg = methods.delete_publication(request.json['name'])
 	if msg != 'success':
 		errors.append(msg)
 	return json.dumps({'errors': errors})
 
 
-@publications.route('/display/<_id>')
-def display(_id):
+@publications.route('/display/<name>')
+def display(name):
 	""" Page for displaying Publications manifests."""
 	scripts = ['js/parsley.min.js', 'js/publications/publications.js']
 	breadcrumbs = [{'link': '/publications', 'label': 'Publications'}, {'link': '/publications/display', 'label': 'Display Publication'}]
 	errors = []
 	manifest = {}
 	try:
-		result = publications_db.find_one({'_id': _id})
+		result = publications_db.find_one({'name': name})
 		assert result != None
 		for key, value in result.items():
 			if isinstance(value, list):
@@ -161,7 +171,7 @@ def search():
 			breadcrumbs=breadcrumbs)
 	if request.method == 'POST':
 		result, num_pages, errors = methods.search_publications(request.json)
-		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
+		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors}, default=JSON_UTIL)
 
 
 @publications.route('/export-manifest', methods=['GET', 'POST'])
@@ -175,7 +185,7 @@ def export_manifest():
 			errors.append('No records were found matching your search criteria.')
 		# Need to write the results to temp folder
 		else:
-			filename = request.json['_id'] + '.json'
+			filename = request.json['name'] + '.json'
 			filepath = os.path.join('app/temp', filename)
 			methods.make_dir('app/temp')
 			with open(filepath, 'w') as f:
@@ -193,21 +203,21 @@ def export_search():
 		# Need to write the results to temp folder
 		methods.make_dir('app/temp')
 		for item in result:
-			filename = item['_id'] + '.json'
+			filename = item['name'] + '.json'
 			filepath = os.path.join('app/temp', filename)
 			with open(filepath, 'w') as f:
-				f.write(json.dumps(item, indent=2, sort_keys=False))
+				f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
 		# Need to zip up multiple files
 		if len(result) > 1:
 			filename = 'search_results.zip'
 			methods.zipfolder('app/temp', 'search_results')
-		return json.dumps({'filename': filename, 'errors': errors})
+		return json.dumps({'filename': filename, 'errors': errors}, default=JSON_UTIL)
 
 
 @publications.route('/update-manifest', methods=['GET', 'POST'])
 def update_manifest():
 	""" Ajax route for updating manifests."""
-	properties = {'namespace': 'we1sv1.1', 'path': ',Publications,'}
+	properties = {'namespace': 'we1sv1.2', 'path': ',Publications,'}
 	errors = []
 	for key, value in request.json.items():
 		if key == 'date':
@@ -267,12 +277,13 @@ def upload():
 					'errors': errors
 				}
 				data.append(f)
-				return json.dumps(data)
+				return json.dumps(data, default=JSON_UTIL)
 		except:
 			f = {
 				'errors': ['Unknown Error: Upload failed.']
 			}
-			return json.dumps(data)
+			data.append(f)
+			return json.dumps(data, default=JSON_UTIL)
 	pass
 
 

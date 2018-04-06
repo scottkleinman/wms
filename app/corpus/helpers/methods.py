@@ -172,6 +172,13 @@ def reshape_query_props(temp_query, temp_show_properties):
 	Returns dicts of keywords and values for both.
 	"""
 	query_props = {}
+	print("temp_query")
+	# {'$and': [{'name': 'gemma'}, {'path': ',Corpus,'}]}
+	print(temp_query)
+	keys = temp_query.keys()
+	key = list(keys)[0]
+	for item in temp_query[key]:
+		print(item)
 	for item in temp_query.split('\n'):
 		prop, val = item.split(':')
 		prop = prop.strip().strip('"').strip("'")
@@ -233,20 +240,20 @@ def create_record(manifest):
 	"""
 	errors = []
 	try:
-		assert manifest['_id'] not in corpus_db.distinct('_id')
+		assert manifest['name'] not in corpus_db.distinct('name')
 		corpus_db.insert_one(manifest)
 	except:
-		msg = 'The <code>_id</code> <strong>' + manifest['_id'] + '</strong> already exists in the database.'
+		msg = 'The <code>name</code> <strong>' + manifest['name'] + '</strong> already exists in the database.'
 		errors.append(msg)
 	return errors
 
 
-def delete_collection(id):
-	"""Deletes a collection manifest based on _id.
+def delete_collection(name):
+	"""Deletes a collection manifest based on name.
 
 	Returns 'success' or an error message string.
 	"""
-	result = corpus_db.delete_one({'_id': id})
+	result = corpus_db.delete_one({'name': name})
 	if result.deleted_count != 0:
 		return 'success'
 	else:
@@ -265,7 +272,7 @@ def search_collections(values):
 	page_size = 10
 	errors = []
 	if len(list(corpus_db.find())) > 0:
-		query_properties, show_properties = reshape_query_props(values['query'], values['properties'])
+		query = values['query']
 		if values['regex'] == True:
 			query = {}
 			for k, v in query_properties.items():
@@ -273,7 +280,7 @@ def search_collections(values):
 			    query[k] = {'$regex': REGEX}
 		else:
 			query = query_properties
-		limit = int(values['limit']) or 0
+		limit = int(values['advancedOptions']['limit']) or 0
 		result = list(corpus_db.find(
 			query,
 			limit=limit,
@@ -299,6 +306,20 @@ def search_corpus(query, limit, paginated, page, show_properties, sorting):
 	"""
 	page_size = 10
 	errors = []
+	"""
+	# Check that the query has a valid path within the Corpus
+	# Good for testing
+	key = list(query.keys())[0]
+	is_path = next((item for item in query.get(key) if item.get('path')), False)
+	# False if the query does not have a path; set it to ',Corpus,' by default
+	if is_path == False:
+		query.get(key).append({'path': ',Corpus,'})
+	print(query.get(key))
+	is_corpus_path = next((item for item in query.get(key) if item.get('path') != None and item.get('path').startswith(',Corpus,')), False)
+	# False if the path is not in the Corpus; return an error
+	if is_corpus_path == False:
+		errors.append('Please supply a valid path within the Corpus.')
+	"""
 	if len(list(corpus_db.find())) > 0:
 		result = corpus_db.find(
 			query,
@@ -307,16 +328,19 @@ def search_corpus(query, limit, paginated, page, show_properties, sorting):
 		if sorting != []:
 			result = result.sort(sorting)
 		result = list(result)
-		# Double the result for testing
-		# result = result + result + result + result + result
-		# result = result + result + result + result + result
-		if paginated == True:
-			pages = list(paginate(result, page_size=page_size))
-			num_pages = len(pages)
-			page = get_page(pages, page)
-			return page, num_pages, errors
+		if result != []:
+			# Double the result for testing
+			# result = result + result + result + result + result
+			# result = result + result + result + result + result
+			if paginated == True:
+				pages = list(paginate(result, page_size=page_size))
+				num_pages = len(pages)
+				page = get_page(pages, page)
+				return page, num_pages, errors
+			else:
+				return result, 1, errors
 		else:
-			return result, 1, errors
+			return [], 1, errors
 	else:
 		errors.append('The Corpus database is empty.')
 		return [], 1, errors
@@ -332,13 +356,13 @@ def update_record(manifest):
 	nodetype = 'collection'
 	if validate_manifest(manifest, nodetype) == True:
 		try:
-			id = manifest.pop('_id')
-			corpus_db.update_one({'_id': id}, {'$set': manifest}, upsert=False)
+			name = manifest.pop('name')
+			corpus_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
 		except:
-			msg = 'Unknown Error: The record for <code>_id</code> <strong>' + manifest['_id'] + '</strong> could not be updated.'
+			msg = 'Unknown Error: The record for <code>name</code> <strong>' + manifest['name'] + '</strong> could not be updated.'
 			errors.append(msg)
 	else:
-		errors.append('Unknown Error: Could not produce a valid manifest.')
+		errors.append('Unknown Error: Could not produce a valname manifest.')
 	return errors
 
 

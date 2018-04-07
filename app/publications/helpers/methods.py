@@ -416,6 +416,106 @@ def textarea2dict(fieldname, textarea, main_key, valid_props):
         d = {'errors' : errors}
     return d
 
+import re
+import dateutil.parser
+from datetime import datetime
+
+def testformat(s):
+    """Parses date and returns a dict with the date string, format,
+    and an error message if the date cannot be parsed.
+    """
+    error = ''
+    try:
+        d = datetime.strptime(s, '%Y-%m-%d')
+        dateformat = 'date'
+    except:
+        try:
+            d = datetime.strptime(s, '%Y-%m-%dT%H:%M:%SZ')
+            dateformat = 'datetime'
+        except:
+            dateformat = 'unknown'
+    if dateformat == 'unknown':
+        try:
+            d = dateutil.parser.parse(s)
+            s = d.strftime("%Y-%m-%dT%H:%M:%SZ")
+            dateformat = 'datetime'
+        except:
+            error = 'Could not parse date "' + s + '" into a valid format.'
+    if error == '':
+        return {'text': s, 'format': dateformat}
+    else:
+        return {'text': s, 'format': 'unknown', 'error': error}
+
+
+def textarea2datelist(textarea):
+    """Converts a textarea string into a list of date dicts.
+    """
+
+    lines = textarea.replace('-\n', '- \n').split('\n')
+    all_lines = []
+    for line in lines:
+        line = line.replace(', ', ',')
+        dates = line.split(',')
+        for item in dates:
+            if re.search(' - ', item): # Check for ' -'
+                d = {'range': {'start': ''}}
+                range = item.split(' - ')
+                start = testformat(range[0])
+                end = testformat(range[1])
+                # Make sure start date precedes end date
+                try:
+                    if end['text'] == '':
+                        d['range']['start'] = start
+                    else:
+                        assert start['text'] < end['text']
+                        d['range']['start'] = start
+                        d['range']['end'] = end
+                except:
+                    d = {'error': 'The start date "' + start['text'] + '" must precede the end date "' + end['text'] + '".'}
+                else:
+                      d['range']['start'] = start
+            else:
+                d = testformat(item)
+            all_lines.append(d)
+    return all_lines
+
+
+def flatten_datelist(all_lines):
+    """Flattens the output of textarea2datelist() by removing 'text' and 'format' properties
+    and replacing their container dicts with a simple date string.
+    """
+    flattened = []
+    for line in all_lines:
+        if 'text' in line:
+            line = line['text']
+        if 'range' in line:
+            line['range']['start'] = line['range']['start']['text']
+            if 'end' in line['range'] and line['range']['end'] == '':
+                line['range']['end'] = line['range']['end']['text']
+            elif 'end' in line['range'] and line['range']['end'] != '':
+                line['range']['end'] = line['range']['end']['text']
+        flattened.append(line)
+    return flattened
+
+
+def serialize_datelist(flattened_datelist):
+    """Converts the output of flatten_datelist() to a line-delimited string suitable for
+    returning to the UI as the value of a textarea.
+    """
+    dates = []
+    for item in flattened_datelist:
+        if isinstance(item, dict) and 'error' not in item:
+            start = item['range']['start'] + ' - '
+            if 'end' in item['range']:
+                end = item['range']['end']
+                dates.append(start + end)
+            else:
+                dates.append(start)
+        else:
+            dates.append(str(item)) # error dict is cast as a string
+    return '\n'.join(dates)
+
+
 def list_publications(page_size=10, page=1):
 	"""
 	Prints a list of all publications.

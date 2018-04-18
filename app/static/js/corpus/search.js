@@ -1,20 +1,8 @@
 $(document).ready(function(){
-var schema = [{
-  'id': 'altTitle',
-  'label': 'altTitle',
-  'type': 'string',
-  'size': 30
-},
+var schema = [
 {
-    'id': 'authors',
-    'label': 'authors',
-    'type': 'string',
-    'size': 30,
-    'value_separator': ','
-},
-{
-    'id': 'collectors',
-    'label': 'collectors',
+    'id': 'contributors',
+    'label': 'contributors',
     'type': 'string',
     'size': 30
 },
@@ -25,8 +13,8 @@ var schema = [{
     'size': 30
 },
 {
-    'id': 'date',
-    'label': 'date',
+    'id': 'created',
+    'label': 'created',
     'type': 'date',
     'validation': {
         'callback': function (value, rule) {
@@ -53,14 +41,38 @@ var schema = [{
     'size': 30
 },
 {
-    'id': 'edition',
-    'label': 'edition',
+    'id': 'encoding',
+    'label': 'encodingh',
     'type': 'string',
     'size': 30
 },
 {
-    'id': 'name',
-    'label': 'name',
+    'id': 'format',
+    'label': 'format',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'id',
+    'label': 'id',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': '_id',
+    'label': '_id',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'image',
+    'label': 'image',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'keywords',
+    'label': 'keywords',
     'type': 'string',
     'size': 30
 },
@@ -71,8 +83,38 @@ var schema = [{
     'size': 30
 },
 {
-    'id': 'mimetype',
-    'label': 'mimetype',
+    'id': 'metapath',
+    'label': 'metapath',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'mediatype',
+    'label': 'mediatype',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'name',
+    'label': 'name',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'namespace',
+    'label': 'namespace',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'licenses',
+    'label': 'licenses',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'notes',
+    'label': 'notes',
     'type': 'string',
     'size': 30
 },
@@ -86,20 +128,8 @@ var schema = [{
     'operators': ['equal', 'not_equal']
 },
 {
-    'id': 'path',
-    'label': 'path',
-    'type': 'string',
-    'size': 30
-},
-{
     'id': 'processes',
     'label': 'processes',
-    'type': 'string',
-    'size': 30
-},
-{
-    'id': 'publications',
-    'label': 'publications',
     'type': 'string',
     'size': 30
 },
@@ -128,8 +158,42 @@ var schema = [{
     'size': 30
 },
 {
+    'id': 'shortTitle',
+    'label': 'shortTitle',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'sources',
+    'label': 'sources',
+    'type': 'string',
+    'size': 30
+},
+{
     'id': 'title',
     'label': 'title',
+    'type': 'string',
+    'size': 30
+},
+{
+    'id': 'updated',
+    'label': 'updated',
+    'type': 'date',
+    'validation': {
+        'callback': function (value, rule) {
+            var d = moment(value, 'YYYY-MM-DD', true).isValid();
+            var dt = moment(value, 'YYYY-MM-DDTHH:mm:ss', true).isValid();
+            if (d == true || dt == true) {
+                return true;
+            } else {
+                return ['<code>{0}</code> is not a valid date format. Please use <code>YYYY-MM-DD</code> or <code>YYYY-MM-DDTHH:mm:ss</code>.', value];
+            }
+        }
+    }
+},
+{
+    'id': 'version',
+    'label': 'version',
     'type': 'string',
     'size': 30
 },

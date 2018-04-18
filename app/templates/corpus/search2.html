@@ -5,7 +5,7 @@
 <p>{{ error|safe }}</p>
 {% endfor %}
 {% else %}
-{% set fields = ['altTitle', 'authors', 'collectors', 'content', 'date', 'description', 'documentType', 'edition', 'name', 'label', 'mimetype', 'OCR', 'path', 'processes', 'publications', 'publisher', 'queryterms', 'relationships', 'rights', 'title', 'workstation'] %}
+{% set fields = ['content', 'contributors', 'description', 'documentType', 'encoding', 'format', 'id', '_id', 'image', 'keywords', 'label', 'licenses', 'mediatype', 'metapath', 'name', 'namespace', 'notes', 'OCR', 'processes', 'queryterms', 'relationships', 'rights', 'shortTitle', 'sources', 'title', 'version', 'workstation'] %}
 <style type="text/css">
 .query-builder .btn-primary.active, .query-builder .btn-primary.focus,
 .query-builder .btn-primary:active, .query-builder .btn-primary:focus,
@@ -94,7 +94,7 @@ td { cursor: move !important;}
             </tr>
         </thead>
         <tbody>
-            {% set shown = ['date', 'description', 'name', 'path', 'title'] %}
+            {% set shown = ['created', 'description', 'name', 'metapath', 'title'] %}
             {% for item in fields %}
             <tr data-id="{{loop.index}}" data-name="{{item}}" data-direction="none" data-show="{{'true' if item in shown}}">
                         <td>

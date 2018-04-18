@@ -540,7 +540,6 @@ def save_upload():
 			collection = request.json['collection']
 		else:
 			collection = 'Corpus,' + request.json['collection']
-		# Make sure the collection exists in the database
 		try:
 			result = list(corpus_db.find({'metapath': 'Corpus', 'name': request.json['collection']}))
 			assert result != []
@@ -548,10 +547,10 @@ def save_upload():
 			node_metadata = {}
 			if request.json['branch'] != '':
 				node_metadata['name'] = request.json['branch']
-				node_metadata['metapath'] = collection + request.json['category'] + ','
+				node_metadata['metapath'] = collection + ',' + request.json['category']
 			else:
 				node_metadata['name'] = request.json['category']
-				node_metadata['metapath'] = collection + ','
+				node_metadata['metapath'] = collection
 			mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 			# Make sure files exist in the uploads folder
 			if len(os.listdir(mydir)) > 0:
@@ -579,7 +578,7 @@ def save_upload():
 									manifest[key] = value
 					except:
 						errors.append('<p>The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
-					schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/Corpus/Data.json'
+					schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/Data.json'
 					schema = json.loads(requests.get(schema_file).text)
 					try:
 						methods.validate(manifest, schema, format_checker=FormatChecker())
@@ -587,16 +586,16 @@ def save_upload():
 						errors = errors + result
 					except:
 						print('Could not validate manifest for ' + filename)
-						errors.append('<p>A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.</p>')
+						errors.append('A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.')
 				# We're done. Empty the uploads folder.
 				mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 				list(map(os.unlink, (os.path.join(mydir,f) for f in os.listdir(mydir))))
 			else:
 				print('There were no files in the uploads directory.')
 		except:
-			errors.append('<p>The specified collection does not exist in the database. Check your entry or <a href="/corpus/create">Create a Collection</a> before importing data.</p>')
+			errors.append('The specified collection does not exist in the database. Check your entry or <a href="/corpus/create">create a collection</a> before importing data.')
 		if errors == []:			
-			response = {'response': '<p>Manifests created successfully.</p>'}
+			response = {'response': 'Manifests created successfully.'}
 		else:
 			response = {'errors': errors}
 		return json.dumps(response)

@@ -240,10 +240,12 @@ def create_record(manifest):
 	"""
 	errors = []
 	try:
-		assert manifest['name'] not in corpus_db.distinct('name')
+		result = list(corpus_db.find({'name': manifest['name'], 'metapath': manifest['metapath']}))
+		assert result == []
+		# assert manifest['name'] not in corpus_db.distinct('name')
 		corpus_db.insert_one(manifest)
 	except:
-		msg = 'The <code>name</code> <strong>' + manifest['name'] + '</strong> already exists in the database.'
+		msg = 'The <code>name</code> <strong>' + manifest['name'] + '</strong> already exists along the metapath <code>' + manifest['metapath'] + '</code> in the database.'
 		errors.append(msg)
 	return errors
 

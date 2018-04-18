@@ -459,8 +459,10 @@ def testformat(s):
     if dateformat == 'unknown':
         try:
             d = dateutil.parser.parse(s)
-            s = d.strftime("%Y-%m-%dT%H:%M:%SZ")
-            dateformat = 'datetime'
+            # s = d.strftime("%Y-%m-%dT%H:%M:%SZ")
+            # dateformat = 'datetime'
+            s = d.strftime("%Y-%m-%d")
+            dateformat = 'date'
         except:
             error = 'Could not parse date "' + s + '" into a valid format.'
     if error == '':

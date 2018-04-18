@@ -215,11 +215,15 @@ def update_manifest():
 		created = methods.flatten_datelist(methods.textarea2datelist(manifest['created']))
 		if isinstance(created, list) and len(created) == 1:
 			created = created[0]
+		manifest['created'] = created
+		print('Created')
+		print(created)
 
 	if 'updated' in manifest.keys():
 		updated = methods.flatten_datelist(methods.textarea2datelist(manifest['updated']))
 		if isinstance(updated, list) and len(updated) == 1:
 			updated = updated[0]
+		manifest['updated'] = created
 
 	# Handle other textarea strings
 	# Handle other textarea strings

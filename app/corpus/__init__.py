@@ -577,7 +577,7 @@ def save_upload():
 								if key not in ['name', 'namespace', 'metapath']:
 									manifest[key] = value
 					except:
-						errors.append('<p>The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
+						errors.append('The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
 					schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/Data.json'
 					schema = json.loads(requests.get(schema_file).text)
 					try:

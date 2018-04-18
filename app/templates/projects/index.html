@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block main %}
+<!-- Section -->
+<a name="features"></a>
+<section>
+    <!-- <header class="major">
+        <h2>Actions</h2>
+    </header> -->
+    <div class="features">
+        <article>
+            <a href="/projects/create" class="module"><span class="icon fa-book"></span></a>
+            <div class="content">
+                <h3>Create Project Manifest</h3>
+                <p>Create a new project manifest.</p>
+            </div>
+        </article>
+        <article>
+            <a href="/projects/display" class="module"><span class="icon fa-book"></span></a>
+            <div class="content">
+                <h3>Display Project Manifest</h3>
+                <div class="input-group input-group-sm"><input type="text" id="display" placeholder="Enter manifest name." class="form-control" aria-label="Enter name to display." aria-describedby="go">
+                  <div class="input-group-append">
+                    <span class="input-group-text fa fa-search" id="go"></span>
+                  </div>
+              </div>
+            </div>
+        </article>
+        <article>
+            <a href="/projects/search" class="module"><span class="icon fa-book"></span></a>
+            <div class="content">
+                <h3>Search the Projects Database</h3>
+                <p>Search all project manifests.</p>
+            </div>
+        </article>    
+        <article>
+            &nbsp;
+        </article>
+    </div>
+</section>
+{% endblock main %}

@@ -119,8 +119,6 @@ def create_manifest():
 	nodetype = manifest.pop('nodetype', None)
 	if 'OCR' in manifest.keys() and manifest['OCR'] == "on":
 		manifest['OCR'] = True
-
-	print(manifest)
 	# Validate the resulting manifest
 	if methods.validate_manifest(manifest, nodetype) == True:
 		database_errors = methods.create_record(manifest)
@@ -537,23 +535,23 @@ def save_upload():
 		for key, value in request.json.items():
 			if key not in exclude and value != '' and value != []:
 				node_metadata[key] = value
-		# Set the name and path
-		if request.json['collection'].startswith(',Corpus,'):
+		# Set the name and metapath
+		if request.json['collection'].startswith('Corpus,'):
 			collection = request.json['collection']
 		else:
-			collection = ',Corpus,' + request.json['collection']
+			collection = 'Corpus,' + request.json['collection']
 		# Make sure the collection exists in the database
 		try:
-			result = list(corpus_db.find({'path': ',Corpus,', 'name': request.json['collection']}))
+			result = list(corpus_db.find({'metapath': 'Corpus', 'name': request.json['collection']}))
 			assert result != []
 			# Set the name and path for the new manifest
 			node_metadata = {}
 			if request.json['branch'] != '':
 				node_metadata['name'] = request.json['branch']
-				node_metadata['path'] = collection + request.json['category'] + ','
+				node_metadata['metapath'] = collection + request.json['category'] + ','
 			else:
 				node_metadata['name'] = request.json['category']
-				node_metadata['path'] = collection + ','
+				node_metadata['metapath'] = collection + ','
 			mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 			# Make sure files exist in the uploads folder
 			if len(os.listdir(mydir)) > 0:
@@ -571,13 +569,13 @@ def save_upload():
 				# Now start creating a data manifest for each file and inserting it
 				for filename in os.listdir(mydir):
 					filepath = os.path.join(mydir, filename)
-					path = node_metadata['path'] + node_metadata['name'] + ','
-					manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv1.2', 'path': path}
+					metapath = node_metadata['metapath'] + ',' + node_metadata['name'] + ','
+					manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv2.0', 'metapath': metapath}
 					try:
 						with open(filepath, 'rb') as f:
 							doc = json.loads(f.read())
 							for key, value in doc.items():
-								if key not in ['name', 'namespace', 'path']:
+								if key not in ['name', 'namespace', 'metapath']:
 									manifest[key] = value
 					except:
 						errors.append('<p>The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')

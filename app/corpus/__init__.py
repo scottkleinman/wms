@@ -61,37 +61,66 @@ def create_manifest():
 	""" Ajax route for creating manifests."""
 	errors = []
 	data = request.json
-	data['namespace'] = 'we1sv1.2'
+	# data['namespace'] = 'we1sv2.0'
 	# Set name and path by branch
 	if data['nodetype'] == 'collection':
-		data['path'] = ',Corpus,'
+		try:
+			assert data['metapath'] == 'Corpus'
+		except:
+			errors.append('The <code>metapath</code> for a collection must be "Corpus".')
 	elif data['nodetype'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
 		data['name'] = data['nodetype']
 	else:
 		pass
-	if not data['path'].startswith(',Corpus,'):
-		data['path'] = ',Corpus,' + data['path']
-	if not data['path'].endswith(','):
-		data['path'] += ','
+	if not data['metapath'].startswith('Corpus'):
+		data['metapath'] = 'Corpus,' + data['metapath']
+	data['metapath'] = data['metapath'].strip(',')
+	# if not data['metapath'].endswith(','):
+	# 	data['path'] += ','
 	# Remove empty values
 	manifest = {}
 	for key, value in data.items():
 		if value != '':
 			manifest[key] = value
 	# Handle dates
-	if 'date' in manifest.keys():
-		dates = manifest['date'].splitlines()
-		dates = [x.strip() for x in dates]
-		new_dates, error_list = methods.check_date_format(dates)
-		errors = errors + error_list
-		manifest['date'] = dates
+	# if 'date' in manifest.keys():
+	# 	dates = manifest['date'].splitlines()
+	# 	dates = [x.strip() for x in dates]
+	# 	new_dates, error_list = methods.check_date_format(dates)
+	# 	errors = errors + error_list
+	# 	if new_dates  != []:
+	# 		manifest['date'] = dates
+	if 'created' in manifest.keys():
+		created = methods.flatten_datelist(methods.textarea2datelist(manifest['created']))
+		if isinstance(created, list) and len(created) == 1:
+			created = created[0]
+
+	if 'updated' in manifest.keys():
+		updated = methods.flatten_datelist(methods.textarea2datelist(manifest['updated']))
+		if isinstance(updated, list) and len(updated) == 1:
+			updated = updated[0]
+
 	# Handle other textarea strings
-	list_props = ['publications', 'collectors', 'queryterms', 'processes', 'notes']
+	list_props = ['sources', 'contributors', 'queryterms', 'processes', 'notes', 'keywords', 'licenses']
+	prop_keys = {
+		'sources': { 'main_key': 'title', 'valid_props': ['title', 'path', 'email'] },
+		'contributors': { 'main_key': 'title', 'valid_props': ['title', 'email', 'path', 'role', 'group', 'organization'] },
+		'licenses': { 'main_key': 'name', 'valid_props': ['name', 'path', 'title'] },
+		'queryterms': { 'main_key': '', 'valid_props': [] },
+		'processes': { 'main_key': '', 'valid_props': [] },
+		'notes': { 'main_key': '', 'valid_props': [] },
+		'keywords': { 'main_key': '', 'valid_props': [] }
+	}
 	for item in list_props:
-		if item in manifest:
-			ls = manifest[item].splitlines()
-			manifest[item] = [x.strip() for x in ls]
+		if item in manifest and manifest[item] != '':
+			all_lines = methods.textarea2dict(item, manifest[item], prop_keys[item]['main_key'], prop_keys[item]['valid_props'])
+			if all_lines[item] != []:
+				manifest[item] = all_lines[item]
 	nodetype = manifest.pop('nodetype', None)
+	if 'OCR' in manifest.keys() and manifest['OCR'] == "on":
+		manifest['OCR'] = True
+
+	print(manifest)
 	# Validate the resulting manifest
 	if methods.validate_manifest(manifest, nodetype) == True:
 		database_errors = methods.create_record(manifest)
@@ -121,23 +150,27 @@ def display(name):
 	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/display', 'label': 'Display Collection'}]
 	errors = []
 	manifest = {}
+	result = corpus_db.find_one({'name': name})
 	try:
 		result = corpus_db.find_one({'name': name})
 		assert result != None
 		for key, value in result.items():
 			if isinstance(value, list):
-				manifest[key] = []
-				for element in value:
-					if isinstance(element, dict):
-						l = list(methods.NestedDictValues(element))
-						s = ', '.join(l)
-						manifest[key].append(s)
-					else:
-						manifest[key].append(element)
-				manifest[key] = '\n'.join(manifest[key])
+				textarea = methods.dict2textarea(value)
+				manifest[key] = textarea
+			# if isinstance(value, list):
+			# 	manifest[key] = []
+			# 	for element in value:
+			# 		if isinstance(element, dict):
+			# 			l = list(methods.NestedDictValues(element))
+			# 			s = ', '.join(l)
+			# 			manifest[key].append(s)
+			# 		else:
+			# 			manifest[key].append(element)
+			# 	manifest[key] = '\n'.join(manifest[key])
 			else:
 				manifest[key] = str(value)
-		if manifest['path'] == ',Corpus,':
+		if manifest['metapath'] == 'Corpus':
 			nodetype = 'collection'
 		elif manifest['name'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
 			nodetype = manifest['name'].lower()
@@ -157,37 +190,66 @@ def update_manifest():
 	""" Ajax route for updating manifests."""
 	errors = []
 	data = request.json
-	data['namespace'] = 'we1sv1.2'
+	# data['namespace'] = 'we1sv2.0'
 	# Set name and path by branch
-	if data['path'] == ',Corpus,':
+	if data['metapath'] == 'Corpus':
 		data['nodetype'] = 'collection'
 	elif data['name'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
 		data['nodetype'] = data['name']
+		data['metapath'] = 'Corpus,' + data['metapath']
 	else:
 		data['nodetype'] = 'branch'
-	if not data['path'].startswith(',Corpus,'):
-		data['path'] = ',Corpus,' + data['path']
-	if not data['path'].endswith(','):
-		data['path'] += ','
+		data['metapath'] = 'Corpus,' + data['metapath']
+	data['metapath'] =  data['metapath'].replace('Corpus,Corpus,', 'Corpus,').strip(',')
 	# Remove empty values
 	manifest = {}
 	for key, value in data.items():
 		if value != '':
 			manifest[key] = value
 	# Handle dates
-	if 'date' in manifest.keys():
-		ls = manifest['date'].splitlines()
-		dates = [x.strip() for x in ls]
-		new_dates, error_list = methods.check_date_format(dates)
-		errors = errors + error_list
-		manifest['date'] = new_dates
+	# if 'date' in manifest.keys():
+	# 	ls = manifest['date'].splitlines()
+	# 	dates = [x.strip() for x in ls]
+	# 	new_dates, error_list = methods.check_date_format(dates)
+	# 	errors = errors + error_list
+	# 	manifest['date'] = new_dates
+	if 'created' in manifest.keys():
+		created = methods.flatten_datelist(methods.textarea2datelist(manifest['created']))
+		if isinstance(created, list) and len(created) == 1:
+			created = created[0]
+
+	if 'updated' in manifest.keys():
+		updated = methods.flatten_datelist(methods.textarea2datelist(manifest['updated']))
+		if isinstance(updated, list) and len(updated) == 1:
+			updated = updated[0]
+
 	# Handle other textarea strings
-	list_props = ['publications', 'collectors', 'queryterms', 'processes', 'notes']
+	# Handle other textarea strings
+	list_props = ['sources', 'contributors', 'queryterms', 'processes', 'notes', 'keywords', 'licenses']
+	prop_keys = {
+		'sources': { 'main_key': 'title', 'valid_props': ['title', 'path', 'email'] },
+		'contributors': { 'main_key': 'title', 'valid_props': ['title', 'email', 'path', 'role', 'group', 'organization'] },
+		'licenses': { 'main_key': 'name', 'valid_props': ['name', 'path', 'title'] },
+		'queryterms': { 'main_key': '', 'valid_props': [] },
+		'processes': { 'main_key': '', 'valid_props': [] },
+		'notes': { 'main_key': '', 'valid_props': [] },
+		'keywords': { 'main_key': '', 'valid_props': [] }
+	}
 	for item in list_props:
-		if item in manifest:
-			ls = manifest[item].splitlines()
-			manifest[item] = [x.strip() for x in ls]
+		if item in manifest and manifest[item] != '':
+			all_lines = methods.textarea2dict(item, manifest[item], prop_keys[item]['main_key'], prop_keys[item]['valid_props'])
+			if all_lines[item] != []:
+				manifest[item] = all_lines[item]
+
+	# list_props = ['publications', 'collectors', 'queryterms', 'processes', 'notes']
+	# for item in list_props:
+	# 	if item in manifest:
+	# 		ls = manifest[item].splitlines()
+	# 		manifest[item] = [x.strip() for x in ls]
 	nodetype = manifest.pop('nodetype', None)
+	if 'OCR' in manifest.keys() and manifest['OCR'] == "on":
+		manifest['OCR'] = True
+
 	# Validate the resulting manifest
 	if methods.validate_manifest(manifest, nodetype) == True:
 		database_errors = methods.update_record(manifest)
@@ -218,7 +280,7 @@ def send_export():
 	data = request.json
 	# The user only wants to print the manifest
 	if data['exportoptions'] == ['manifestonly']:
-		query = {'name': data['name'], 'path': data['path']}
+		query = {'name': data['name'], 'metapath': data['metapath']}
 		try:
 			result = corpus_db.find_one(query)
 			assert result != None
@@ -240,16 +302,16 @@ def send_export():
 		# Get the exportoptions with the correct case
 		methods.make_dir('app/temp/Corpus')
 		name = data['name']
-		path = data['path']
+		metapath = data['metapath']
 		# Ensures that there is a Corpus and collection folder with a collection manifest
 		methods.make_dir('app/temp/Corpus')
-		if path == ',Corpus,':
+		if metapath == 'Corpus':
 			collection = name
 		else:
 			collection = path.split(',')[2]
 		methods.make_dir('app/temp/Corpus/' + collection)
-		# result = corpus_db.find_one({'path': path, 'name': collection})
-		result = corpus_db.find_one({'path': path})
+		# result = corpus_db.find_one({'metapath': metapath, 'name': collection})
+		result = corpus_db.find_one({'metapath': metapath})
 		# assert result != None
 		manifest = {}
 		for key, value in result.items():
@@ -264,26 +326,26 @@ def send_export():
 		exportopts = [x.replace('export', '') for x in data['exportoptions']]
 		exclude = []
 		options = ['Corpus', 'RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']
-		if not path.startswith(',Corpus,'):
-			path = ',Corpus,' + path
+		if not metapath.startswith('Corpus,'):
+			metapath = 'Corpus,' + metapath
 		for option in options:
 			if option.lower() in exportopts:
 				exportoptions.append(option)
 			else:
-				exclude.append(',Corpus,' + ',' + name + ',' + option + ',.*')
-		# We have a path and a list of paths to exclude
+				exclude.append('Corpus' + ',' + name + ',' + option + ',.*')
+		# We have a path and a list of metapaths to exclude
 		excluded = '|'.join(exclude)
 		excluded = re.compile(excluded)
-		regex_path = re.compile(path + name + ',.*')
+		regex_path = re.compile(metapath + name + ',.*')
 		result = corpus_db.find(
-			{'path': {
+			{'metapath': {
 				'$regex': regex_path,
 				'$not': excluded
 			}}
 		)
 		for item in list(result):
 			# Handle schema node manifests
-			path = item['path'].replace(',', '/')
+			path = item['metapath'].replace(',', '/')
 			if item['name'] in exportoptions:
 				folder_path = os.path.join(path, item['name'])
 				methods.make_dir('app/temp' + folder_path)

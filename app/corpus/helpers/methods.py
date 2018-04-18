@@ -197,7 +197,7 @@ def validate_manifest(manifest, nodetype):
 	Takes a manifest dict and a nodetype string (which identifies
 	which subschema to validate against). Returns a Boolean.
 	"""
-	url = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/Corpus/'	
+	url = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/'	
 	if nodetype in ['collection', 'RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results', 'Data']:
 		filename = nodetype + '.json'
 	else:
@@ -355,20 +355,186 @@ def update_record(manifest):
 	# Need to set the nodetype
 	nodetype = 'collection'
 	if validate_manifest(manifest, nodetype) == True:
+		name = manifest.pop('name')
+		_id = manifest.pop('_id')
 		try:
-			name = manifest.pop('name')
 			corpus_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
-		except:
-			msg = 'Unknown Error: The record for <code>name</code> <strong>' + manifest['name'] + '</strong> could not be updated.'
+		except pymongo.errors.PyMongoError as e:
+			# print(e.__dict__.keys())
+			# print(e._OperationFailure__details)
+			msg = 'Unknown Error: The record for <code>name</code> <strong>' + name + '</strong> could not be updated.'
 			errors.append(msg)
 	else:
-		errors.append('Unknown Error: Could not produce a valname manifest.')
+		errors.append('Unknown Error: Could not produce a valid manifest.')
 	return errors
 
 
 #----------------------------------------------------------------------------#
 # Currently Unused Functions
 #----------------------------------------------------------------------------#
+
+def textarea2dict(fieldname, textarea, main_key, valid_props):
+    """Converts a textarea string to a dict containing a list of 
+	properties for each line. Multiple properties should be 
+	formatted as comma-separated key: value pairs. The key must be 
+	separated from the value by a space, and the main key should come
+	first. If ": " occurs in the value, the entire value can be put in
+	quotes. Where there is only one value, the key can be omitted, and
+	it will be supplied from main_key. A list of valid properties is
+	supplied in valid_props. If any property is invalid the function
+	returns a dict with only the error key and a list of errors.
+    """
+    import yaml
+    lines = textarea.split('\n')
+    all_lines = []
+    errors = []
+
+    for line in lines:
+    	# No options
+    	if main_key == '':
+    		all_lines.append(line.strip())
+    	# Parse options
+    	else:
+	        opts = {}
+	        # Match main_key without our without quotation marks 
+	        main = main_key + '|[\'\"]' + main_key + '[\'\"]'
+	        pattern = ', (' +'[a-z]+: ' + ')' # Assumes no camel case in the property name
+	        # There are options. Parse them.
+	        if re.search(pattern, line):
+	            line = re.sub(pattern, '\n\\1', line) # Could be improved to handle more variations
+	            opts = yaml.load(line.strip())
+	            for k, v in opts.items():
+	                if valid_props != [] and k not in valid_props:
+	                    errors.append('The ' + fieldname + ' field is incorrectly formatted or ' + k + ' is not a valid property for the field.')
+	        # There are no options, but the main_key is present
+	        elif re.search('^' + main + ': .+$', line):
+	            opts[main_key] = re.sub('^' + main + ': ', '', line.strip())
+	        # There are no options, and the main_key is omitted
+	        elif re.search(pattern, line) == None: 
+	            opts[main_key] = line.strip()
+	        all_lines.append(opts)
+    if errors == []:
+        d = {fieldname: all_lines}
+    else:
+        d = {'errors' : errors}
+    return d
+
+def dict2textarea(props):
+	"""Converts a dict to a line-delimited string suitable for
+	returning to the UI as the value of a textarea.
+	"""
+	lines = ''
+	for item in props:
+		line = ''
+		# Handle string values
+		if isinstance(item, str):
+			lines += item + '\n'
+		# Handle dicts
+		else:
+			for k, v in item.items():
+				line += k + ': ' + str(v).strip(': ') + ', '
+			lines += line.strip(', ') + '\n'
+	return lines.strip('\n')
+
+import re
+import dateutil.parser
+from datetime import datetime
+
+def testformat(s):
+    """Parses date and returns a dict with the date string, format,
+    and an error message if the date cannot be parsed.
+    """
+    error = ''
+    try:
+        d = datetime.strptime(s, '%Y-%m-%d')
+        dateformat = 'date'
+    except:
+        try:
+            d = datetime.strptime(s, '%Y-%m-%dT%H:%M:%SZ')
+            dateformat = 'datetime'
+        except:
+            dateformat = 'unknown'
+    if dateformat == 'unknown':
+        try:
+            d = dateutil.parser.parse(s)
+            s = d.strftime("%Y-%m-%dT%H:%M:%SZ")
+            dateformat = 'datetime'
+        except:
+            error = 'Could not parse date "' + s + '" into a valid format.'
+    if error == '':
+        return {'text': s, 'format': dateformat}
+    else:
+        return {'text': s, 'format': 'unknown', 'error': error}
+
+
+def textarea2datelist(textarea):
+    """Converts a textarea string into a list of date dicts.
+    """
+
+    lines = textarea.replace('-\n', '- \n').split('\n')
+    all_lines = []
+    for line in lines:
+        line = line.replace(', ', ',')
+        dates = line.split(',')
+        for item in dates:
+            if re.search(' - ', item): # Check for ' -'
+                d = {'range': {'start': ''}}
+                range = item.split(' - ')
+                start = testformat(range[0])
+                end = testformat(range[1])
+                # Make sure start date precedes end date
+                try:
+                    if end['text'] == '':
+                        d['range']['start'] = start
+                    else:
+                        assert start['text'] < end['text']
+                        d['range']['start'] = start
+                        d['range']['end'] = end
+                except:
+                    d = {'error': 'The start date "' + start['text'] + '" must precede the end date "' + end['text'] + '".'}
+                else:
+                      d['range']['start'] = start
+            else:
+                d = testformat(item)
+            all_lines.append(d)
+    return all_lines
+
+
+def flatten_datelist(all_lines):
+    """Flattens the output of textarea2datelist() by removing 'text' and 'format' properties
+    and replacing their container dicts with a simple date string.
+    """
+    flattened = []
+    for line in all_lines:
+        if 'text' in line:
+            line = line['text']
+        if 'range' in line:
+            line['range']['start'] = line['range']['start']['text']
+            if 'end' in line['range'] and line['range']['end'] == '':
+                line['range']['end'] = line['range']['end']['text']
+            elif 'end' in line['range'] and line['range']['end'] != '':
+                line['range']['end'] = line['range']['end']['text']
+        flattened.append(line)
+    return flattened
+
+
+def serialize_datelist(flattened_datelist):
+    """Converts the output of flatten_datelist() to a line-delimited string suitable for
+    returning to the UI as the value of a textarea.
+    """
+    dates = []
+    for item in flattened_datelist:
+        if isinstance(item, dict) and 'error' not in item:
+            start = item['range']['start'] + ' - '
+            if 'end' in item['range']:
+                end = item['range']['end']
+                dates.append(start + end)
+            else:
+                dates.append(start)
+        else:
+            dates.append(str(item)) # error dict is cast as a string
+    return '\n'.join(dates)
+
 
 def list_collections(page_size=10, page=1):
 	"""Prints a list of all publications.

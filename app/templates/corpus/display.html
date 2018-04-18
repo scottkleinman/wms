@@ -10,7 +10,7 @@
 <div class="row">
     <div class="col-sm">
         <header class="major">
-            <h2>Display a Collection Manifest</h2>
+            <h2>Display a Corpus Manifest</h2>
         </header>
     </div>    
     <div class="col-sm text-right">
@@ -20,7 +20,7 @@
         <button id="export" class="btn btn-lg  btn-outline-editorial">Export</button>
     </div>
 </div>
-<ul class="nav nav-tabs" id="publicationsFormNav" role="tablist">
+<ul class="nav nav-tabs" id="corpusFormNav" role="tablist">
     <li class="nav-item">
         <a class="nav-link active" id="required-tab" data-toggle="tab" href="#required" role="tab" aria-controls="required" aria-selected="true">Required Properties</a>
     </li>
@@ -138,7 +138,13 @@ var nodetype = '{{ nodetype|safe }}';
         </div>
         {% elif opt.fieldtype == 'checkbox' %}
         <div class="col-sm-12">
-          <input class="form-control form-check-input" id="{{ opt.name|safe }}" name="{{ opt.name|safe }}" type="checkbox" {{ 'required' if opt.required }} readonly value="{{ manifest[prop]|safe or '' }}"><label class="form-check-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+          {% if manifest[prop]|safe == 'True' %}
+          {% set checkval = 'on' %}
+          {% set checked = 'checked="checked"' %}
+          {% else %}
+          {% set checked = '' %}
+          {% endif %}
+          <input class="form-control form-check-input" id="{{ opt.name|safe }}" name="{{ opt.name|safe }}" type="checkbox" {{ 'required' if opt.required }} readonly value="{{ checkval|safe }}" {{ checked }}><label class="form-check-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
         </div>
         {% endif %}
       </div> 

@@ -14,7 +14,7 @@ from pymongo import MongoClient
 # Set up the MongoDB client, configure the databases, and assign variables to the "collections" 
 client = MongoClient('mongodb://localhost:27017')
 db = client.we1s
-publications_db = db.Publications
+sources_db = db.Sources
 
 #----------------------------------------------------------------------------#
 # General Helper Functions
@@ -191,7 +191,7 @@ def validate_manifest(manifest):
 
 	Takes a manifest dict and returns a Boolean.
 	"""
-	schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/Publications/Publications.json'
+	schema_file = 'https://github.com/whatevery1says/manifest/raw/master/schema/v2.0/Sources/Sources.json'
 	schema = json.loads(requests.get(schema_file).text)
 	try:
 		validate(manifest, schema, format_checker=FormatChecker())
@@ -230,8 +230,8 @@ def create_record(manifest):
 	errors = []
 	if validate_manifest(manifest) == True:
 		try:
-			assert manifest['name'] not in publications_db.distinct('name')
-			publications_db.insert_one(manifest)
+			assert manifest['name'] not in sources_db.distinct('name')
+			sources_db.insert_one(manifest)
 		except:
 			msg = 'The <code>name</code> <strong>' + manifest['name'] + '</strong> already exists in the database.'
 			errors.append(msg)
@@ -240,13 +240,13 @@ def create_record(manifest):
 	return errors
 
 
-def delete_publication(name):
+def delete_source(name):
 	"""
-	Deletes a publication manifest based on name.
+	Deletes a source manifest based on name.
 
 	Returns 'success' or an error message string.
 	"""
-	result = publications_db.delete_one({'name': name})
+	result = sources_db.delete_one({'name': name})
 	if result.deleted_count != 0:
 		return 'success'
 	else:
@@ -258,26 +258,33 @@ def import_manifests(source_files):
 	Loops through the source files and streams them into a dataframe, then converts
 	the dataframe to a list of manifest dicts.
 	"""
-	print('Impoooorrrrtttinng')
 	# Set up the storage functions for pandas dataframes
 	storage = Storage()
 	storage.create('data', {
 		'primaryKey': 'name',
 		'fields': [
 			{'name': 'name', 'type': 'string'},
-			{'name': 'publication', 'type': 'string'},
+			{'name': 'metapath', 'type': 'string'},
+			{'name': 'namespace', 'type': 'string'},
+			{'name': 'title', 'type': 'string'},
+			{'name': 'id', 'type': 'string'},
+			{'name': '_id', 'type': 'string'},
 			{'name': 'description', 'type': 'string'},
+			{'name': 'version', 'type': 'string'},
+			{'name': 'shortTitle', 'type': 'string'},
+			{'name': 'label', 'type': 'string'},
+			{'name': 'notes', 'type': 'string'},
+			{'name': 'keywords', 'type': 'string'},
+			{'name': 'image', 'type': 'string'},
 			{'name': 'publisher', 'type': 'string'},
+			{'name': 'webpage', 'type': 'string'},
+			{'name': 'authors', 'type': 'string'},
 			{'name': 'date', 'type': 'string'},
 			{'name': 'edition', 'type': 'string'},
 			{'name': 'contentType', 'type': 'string'},
-			{'name': 'language', 'type': 'string'},
 			{'name': 'country', 'type': 'string'},
-			{'name': 'authors', 'type': 'string'},
-			{'name': 'title', 'type': 'string'},
-			{'name': 'altTitle', 'type': 'string'},
-			{'name': 'label', 'type': 'string'},
-			{'name': 'notes', 'type': 'string'}
+			{'name': 'language', 'type': 'string'},
+			{'name': 'citation', 'type': 'string'}
 		]
 	})
 	path = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
@@ -292,10 +299,15 @@ def import_manifests(source_files):
 		filepath = os.path.join(path, item)
 		with tabulator.Stream(filepath, **options) as stream:
 			try:
-				stream.headers == ['name', 'publication', 'description', 'publisher', 'date', 'edition', 'contentType', 'language', 'country', 'authors', 'title', 'altTitle', 'label', 'notes']				
+				stream.headers == ['name', 'metapath', 'namespace', 
+						'title', 'id', '_id', 'description', 'version', 
+						'shortTitle', 'label', 'notes', 'keywords', 
+						'image', 'publisher', 'webpage', 'authors', 
+						'date', 'edition', 'contentType', 'country', 
+						'language', 'citation']
 			except:
-				col_order = 'name, publication, description, publisher, date, edition, contentType, language, country, authors, title, altTitle, label, notes'
-				error_list.append('Error: The table headings in ' + item + ' do not match the Publications schema. Please use the headings ' + col_order + ' in that order.')
+				col_order = 'name, metapath, namespace, title, id, _id, description, version, shortTitle, label, notes, keywords, image, publisher, webpage, authors, date, edition, contentType, country, language, citation'
+				error_list.append('Error: The table headings in ' + item + ' do not match the Sources schema. Please use the headings ' + col_order + ' in that order.')
 		with tabulator.Stream(filepath, **options) as stream:
 			try:
 				storage.write('data', stream)
@@ -310,8 +322,8 @@ def import_manifests(source_files):
 		properties = {k: v for k, v in values.items() if v is not None}
 		properties = {k: v.replace('\\n', '\n') for k, v in properties.items()}
 		properties['name'] = key
-		properties['namespace'] = 'we1sv1.2'
-		properties['path'] = ',Publications,'
+		properties['namespace'] = 'we1sv2.0'
+		properties['metapath'] = 'Sources'
 		if validate_manifest(properties) == True:
 			manifests.append(properties)
 		else:
@@ -324,14 +336,14 @@ def import_manifests(source_files):
 	return manifests, error_list
 
 
-def search_publications(values):
+def search_sources(values):
 	"""Queries the database from the search form.
 
 	Takes a list of values from the form and returns the search results.
 	"""
 	page_size = 10
 	errors = []
-	if len(list(publications_db.find())) > 0:
+	if len(list(sources_db.find())) > 0:
 		query_properties, show_properties = reshape_query_props(values['query'], values['properties'])
 		if values['regex'] == True:
 			query = {}
@@ -340,7 +352,7 @@ def search_publications(values):
 			    query[k] = {'$regex': REGEX}
 		else:
 			query = query_properties
-		result = list(publications_db.find(
+		result = list(sources_db.find(
 			query,
 			limit=int(values['limit']),
 			projection=show_properties)
@@ -350,7 +362,7 @@ def search_publications(values):
 		page = get_page(pages, int(values['page']))
 		return result, num_pages, errors
 	else:
-		errors.append('The Publications database is empty.')
+		errors.append('The Sources database is empty.')
 		return [], 1, errors
 
 
@@ -361,11 +373,13 @@ def update_record(manifest):
 	"""
 	errors = []
 	if validate_manifest(manifest) == True:
+		print(manifest)
+		name = manifest.pop('name')
+		_id = manifest.pop('_id')
 		try:
-			name = manifest.pop('name')
-			publications_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
+			sources_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
 		except:
-			msg = 'Unknown Error: The record for <code>name</code> <strong>' + manifest['name'] + '</strong> could not be updated.'
+			msg = 'Unknown Error: The record for <code>name</code> <strong>' + name + '</strong> could not be updated.'
 			errors.append(msg)
 	else:
 		errors.append('Unknown Error: Could not produce a valid manifest.')
@@ -516,13 +530,13 @@ def serialize_datelist(flattened_datelist):
     return '\n'.join(dates)
 
 
-def list_publications(page_size=10, page=1):
+def list_sources(page_size=10, page=1):
 	"""
-	Prints a list of all publications.
+	Prints a list of all sources.
 	"""
-	if len(list(publications.find())) > 0:
-		result = list(publications.find())
+	if len(list(sources.find())) > 0:
+		result = list(sources.find())
 		pages = list(paginate(result, page_size=page_size))
 		page = get_page(pages, page)
 	else:
-		print('The Publications database is empty.')
+		print('The Sources database is empty.')

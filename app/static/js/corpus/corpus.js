@@ -316,6 +316,11 @@ $(document).ready(function() {
 		$('form').show();
 	});
 
+	$('#save').click(function(e){
+		e.preventDefault();
+		$('#manifestForm').submit();
+	});
+
 
 	//
 	// Create Page Functions
@@ -347,7 +352,8 @@ $(document).ready(function() {
 			default:
 			var template = $('#generic-template').html();
 			$('#manifestCard').html(template);
-			$('#name').val(',' + val + ',');
+			$('#name').val(val);
+			$('#title').val(val);
 		}
 		$('.nav-tabs a[href="#required"]').tab('show');
 	});

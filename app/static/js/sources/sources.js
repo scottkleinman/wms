@@ -22,7 +22,7 @@ function createManifest(jsonform) {
 	manifest = JSON.stringify(jsonform, null, '  ');
 	$.ajax({
 		method: "POST",
-		url: "/publications/create-manifest",
+		url: "/sources/create-manifest",
 		data: manifest,
 		contentType: 'application/json;charset=UTF-8',
 	})
@@ -38,7 +38,7 @@ function createManifest(jsonform) {
 	    bootbox.alert({
         message: msg,
         callback: function () {
-            window.location = '/publications';
+            window.location = '/sources';
         }
 	    });
 	})
@@ -59,7 +59,7 @@ function deleteManifest(name) {
 	   Returns: An array of errors for display */
 	$.ajax({
 		method: "POST",
-		url: "/publications/delete-manifest",
+		url: "/sources/delete-manifest",
 		data: JSON.stringify({"name": name}),
 		contentType: 'application/json;charset=UTF-8',
 	})
@@ -74,7 +74,7 @@ function deleteManifest(name) {
 	    bootbox.alert({
         message: msg,
         callback: function () {
-            window.location = '/publications';
+            window.location = '/sources';
         }
 	    });
 	})
@@ -89,15 +89,15 @@ function deleteManifest(name) {
 }
 
 
-function exportPublicationManifest() {
-	/* Exports a single Publications manifest from the Display page.
+function exportSourceManifest() {
+	/* Exports a single source manifest from the Display page.
 	   Input: Values from the search form
 	   Returns: An array containing results and errors for display */
 
 	filename = $('#name').val() + '.json';
 	$.ajax({
 		method: "POST",
-		url: "/publications/export-manifest",
+		url: "/sources/export-manifest",
 		data: JSON.stringify({'name': $('#name').val()}),
 		contentType: 'application/json;charset=UTF-8',
 	})
@@ -112,7 +112,7 @@ function exportPublicationManifest() {
 	        }
 		    });
 		} else {
-			window.location = '/publications/download-export/' + filename;
+			window.location = '/sources/download-export/' + filename;
 		}
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
@@ -127,12 +127,12 @@ function exportPublicationManifest() {
 
 
 function exportSearch(data) {
-	/* Exports the results of a Publications search
+	/* Exports the results of a Sources search
 	   Input: Values from the search form
 	   Returns: An array containing results and errors for display */
 	$.ajax({
 		method: "POST",
-		url: "/publications/export-search",
+		url: "/sources/export-search",
 		data: JSON.stringify(data),
 		contentType: 'application/json;charset=UTF-8',
 	})
@@ -147,7 +147,7 @@ function exportSearch(data) {
 	        }
 		    });
 		} else {
-			window.location = '/publications/download-export/' + response['filename'];
+			window.location = '/sources/download-export/' + response['filename'];
 		}
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
@@ -161,13 +161,13 @@ function exportSearch(data) {
 }
 
 
-function searchPubs(data) {
-	/* Searches the Publications databse
+function searchSources(data) {
+	/* Searches the Sources database
 		Input: Values from the search form
 		Returns: An array containing results and errors for display */
 	$.ajax({
 		method: "POST",
-		url: "/publications/search",
+		url: "/sources/search",
 		data: JSON.stringify(data),
 		contentType: 'application/json;charset=UTF-8',
 	})
@@ -182,7 +182,7 @@ function searchPubs(data) {
 		// Make the result into a string
 		var out = '';
 		$.each(result, function (i, item) {
-			var link = '/publications/display/' + item['name'];
+			var link = '/sources/display/' + item['name'];
 			out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>';
 			$.each(item, function (key, value) {
 				value = JSON.stringify(value);
@@ -238,7 +238,7 @@ function updateManifest(jsonform, name) {
 	manifest = JSON.stringify(jsonform, null, '  ');
 	$.ajax({
 		method: "POST",
-		url: "/publications/update-manifest",
+		url: "/sources/update-manifest",
 		data: manifest,
 		contentType: 'application/json;charset=UTF-8',
 	})
@@ -254,7 +254,7 @@ function updateManifest(jsonform, name) {
 	    bootbox.alert({
         message: msg,
         callback: function () {
-            window.location = '/publications';
+            window.location = '/sources';
         }
 	    });
 	})
@@ -282,7 +282,7 @@ $(document).ready(function() {
 	/* Handles the Display form */
 	$('#go').click(function(e){
 		var name = $('#display').val();
-		window.location = '/publications/display/' + name; 
+		window.location = '/sources/display/' + name; 
 	});
 	$('#display').on('keypress',function(e){
 	 var key = (e.keyCode || e.which);
@@ -384,7 +384,7 @@ $(document).ready(function() {
 	/* Handles the Export feature */
 	$('#export').click(function(e) {
 		e.preventDefault();
-	    exportPublicationManifest();
+	    exportSourceManifest();
 	});
 
 
@@ -393,7 +393,7 @@ $(document).ready(function() {
 	//
 
 	/* Handles the Search feature */
-	$('#searchPubs').click(function(e) {
+	$('#searchSources').click(function(e) {
 		e.preventDefault();
 		data = {
 			'query': $('#query').val(),
@@ -402,7 +402,7 @@ $(document).ready(function() {
 			'properties': $('#properties').val(),
 			'page': 1
 		}
-		searchPubs(data);
+		searchSources(data);
 	});
 
 
@@ -448,7 +448,7 @@ $(document).ready(function() {
 			'properties': $('#properties').val(),
 			'page': $(this).html()
 		}
-	    searchPubs(data);
+	    searchSources(data);
 	});
 
 	

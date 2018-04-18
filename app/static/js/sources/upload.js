@@ -1,6 +1,6 @@
-/* Publications */
+/* Sources */
 $(function () {
-   // do photo uploads
+   // do uploads
    $('#fileupload').fileupload({
        dataType: 'json',
        enctype: 'multipart/form-data',
@@ -40,7 +40,7 @@ $(function () {
 	           return msg;
 	        },
 	        callback: function () {
-	            window.location = '/publications';
+	            window.location = '/sources';
 	        }
 		    });
            $('#progress').hide();

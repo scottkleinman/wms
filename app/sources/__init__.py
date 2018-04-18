@@ -21,11 +21,11 @@ from pymongo import MongoClient
 # Set up the MongoDB client, configure the databases, and assign variables to the "collections" 
 client = MongoClient('mongodb://localhost:27017')
 db = client.we1s
-publications_db = db.Publications
+sources_db = db.Sources
 
-publications = Blueprint('publications', __name__, template_folder='publications')
+sources = Blueprint('sources', __name__, template_folder='sources')
 
-from app.publications.helpers import methods as methods
+from app.sources.helpers import methods as methods
 
 #----------------------------------------------------------------------------#
 # Constants.
@@ -40,35 +40,35 @@ country_list = ['AF', 'AX', 'AL', 'DZ', 'AS', 'AD', 'AO', 'AI', 'AQ', 'AG', 'AR'
 # Controllers.
 #----------------------------------------------------------------------------#
 
-@publications.route('/')
+@sources.route('/')
 def index():
-	"""Publications index page."""
+	"""Sources index page."""
 	scripts = [
 	'js/jQuery-File-Upload-9.20.0/js/vendor/jquery.ui.widget.js', 
 	'js/jQuery-File-Upload-9.20.0/js/jquery.iframe-transport.js', 
 	'js/jQuery-File-Upload-9.20.0/js/jquery.fileupload.js', 
-	'js/publications/publications.js',
-	'js/publications/upload.js'
+	'js/sources/sources.js',
+	'js/sources/upload.js'
 	]
 	styles = []
-	breadcrumbs = [{'link': '/publications', 'label': 'Publications'}]
-	return render_template('publications/index.html', scripts=scripts, styles=styles, breadcrumbs=breadcrumbs)
+	breadcrumbs = [{'link': '/sources', 'label': 'Sources'}]
+	return render_template('sources/index.html', scripts=scripts, styles=styles, breadcrumbs=breadcrumbs)
 
 
-@publications.route('/create', methods=['GET', 'POST'])
+@sources.route('/create', methods=['GET', 'POST'])
 def create():
 	"""Create manifest page."""
-	scripts = ['js/parsley.min.js', 'js/publications/publications.js']
-	breadcrumbs = [{'link': '/publications', 'label': 'Publications'}, {'link': '/publications/create', 'label': 'Create Publication'}]
-	with open("app/templates/publications/template_config.yml", 'r') as stream:
+	scripts = ['js/parsley.min.js', 'js/sources/sources.js']
+	breadcrumbs = [{'link': '/sources', 'label': 'Sources'}, {'link': '/sources/create', 'label': 'Create Publication'}]
+	with open("app/templates/sources/template_config.yml", 'r') as stream:
 		templates = yaml.load(stream)	
-	return render_template('publications/create.html', lang_list=lang_list, country_list=country_list, scripts=scripts, breadcrumbs=breadcrumbs, templates=templates)
+	return render_template('sources/create.html', lang_list=lang_list, country_list=country_list, scripts=scripts, breadcrumbs=breadcrumbs, templates=templates)
 
 
-@publications.route('/create-manifest', methods=['GET', 'POST'])
+@sources.route('/create-manifest', methods=['GET', 'POST'])
 def create_manifest():
 	""" Ajax route for creating manifests."""
-	properties = {'namespace': 'we1sv1.2', 'path': ',Publications,'}
+	properties = {'namespace': 'we1sv2.0', 'path': 'Sources'}
 	errors = []
 	for key, value in request.json.items():
 		if key == 'date':
@@ -76,10 +76,13 @@ def create_manifest():
 			dates = [x.strip() for x in ls]
 			new_dates, error_list = methods.check_date_format(dates)
 			errors = errors + error_list
-			properties[key] = new_dates
+			if new_dates  != []:
+				properties[key] = new_dates
 		elif isinstance(value, list):
 			ls = value.splitlines()
-			properties[key] = [x.strip() for x in ls]
+			ls =  [x.strip() for x in ls]
+			if ls != []:
+				properties[key] = ls
 		elif value != '' and value != ['']:
 			properties[key] = value
 	if methods.validate_manifest(properties) == True:
@@ -93,6 +96,7 @@ def create_manifest():
 
 	# Need to insert into the database
 	manifest = json.dumps(properties, indent=2, sort_keys=False, default=JSON_UTIL)
+
 	if len(errors) > 0:
 		error_str = '<ul>'
 		for item in errors:
@@ -104,25 +108,27 @@ def create_manifest():
 	return json.dumps(response)
 
 
-@publications.route('/delete-manifest', methods=['GET', 'POST'])
+@sources.route('/delete-manifest', methods=['GET', 'POST'])
 def delete_manifest():
 	""" Ajax route for deleting manifests."""
 	errors = []
-	msg = methods.delete_publication(request.json['name'])
+	msg = methods.delete_source(request.json['name'])
 	if msg != 'success':
 		errors.append(msg)
 	return json.dumps({'errors': errors})
 
 
-@publications.route('/display/<name>')
+@sources.route('/display/<name>')
 def display(name):
-	""" Page for displaying Publications manifests."""
-	scripts = ['js/parsley.min.js', 'js/publications/publications.js']
-	breadcrumbs = [{'link': '/publications', 'label': 'Publications'}, {'link': '/publications/display', 'label': 'Display Publication'}]
+	""" Page for displaying Source manifests."""
+	scripts = ['js/parsley.min.js', 'js/sources/sources.js']
+	with open("app/templates/sources/template_config.yml", 'r') as stream:
+		templates = yaml.load(stream)	
+	breadcrumbs = [{'link': '/sources', 'label': 'Sources'}, {'link': '/sources/display', 'label': 'Display Publication'}]
 	errors = []
 	manifest = {}
 	try:
-		result = publications_db.find_one({'name': name})
+		result = sources_db.find_one({'name': name})
 		assert result != None
 		for key, value in result.items():
 			if isinstance(value, list):
@@ -139,12 +145,12 @@ def display(name):
 				manifest[key] = str(value)
 	except:
 		errors.append('Unknown Error: The manifest does not exist or could not be loaded.')
-	return render_template('publications/display.html', lang_list=lang_list, 
+	return render_template('sources/display.html', lang_list=lang_list, 
 		country_list=country_list, scripts=scripts, breadcrumbs=breadcrumbs,
-		manifest=manifest, errors=errors)
+		manifest=manifest, errors=errors, templates=templates)
 
 
-@publications.route('/download-export/<filename>', methods=['GET', 'POST'])
+@sources.route('/download-export/<filename>', methods=['GET', 'POST'])
 def download_export(filename):
 	""" Ajax route to trigger download and empty the temp folder."""
 	from flask import make_response
@@ -161,25 +167,25 @@ def download_export(filename):
 	return response
 
 
-@publications.route('/search', methods=['GET', 'POST'])
+@sources.route('/search', methods=['GET', 'POST'])
 def search():
-	""" Page for searching Publications manifests."""
-	scripts = ['js/parsley.min.js', 'js/jquery.twbsPagination.min.js', 'js/publications/publications.js']
-	breadcrumbs = [{'link': '/publications', 'label': 'Publications'}, {'link': '/publications/search', 'label': 'Search Publications'}]
+	""" Page for searching Sources manifests."""
+	scripts = ['js/parsley.min.js', 'js/jquery.twbsPagination.min.js', 'js/sources/sources.js']
+	breadcrumbs = [{'link': '/sources', 'label': 'Sources'}, {'link': '/sources/search', 'label': 'Search Sources'}]
 	if request.method == 'GET':
-		return render_template('publications/search.html', scripts=scripts,
+		return render_template('sources/search.html', scripts=scripts,
 			breadcrumbs=breadcrumbs)
 	if request.method == 'POST':
-		result, num_pages, errors = methods.search_publications(request.json)
+		result, num_pages, errors = methods.search_sources(request.json)
 		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors}, default=JSON_UTIL)
 
 
-@publications.route('/export-manifest', methods=['GET', 'POST'])
+@sources.route('/export-manifest', methods=['GET', 'POST'])
 def export_manifest():
 	""" Ajax route for exporting a single manifest from the Display page."""
 	if request.method == 'POST':
 		errors = []
-		result = publications_db.find_one(request.json)
+		result = sources_db.find_one(request.json)
 		if len(result) == 0:
 			filename = ''
 			errors.append('No records were found matching your search criteria.')
@@ -189,15 +195,15 @@ def export_manifest():
 			filepath = os.path.join('app/temp', filename)
 			methods.make_dir('app/temp')
 			with open(filepath, 'w') as f:
-				f.write(json.dumps(result, indent=2, sort_keys=False))
+				f.write(json.dumps(result, indent=2, sort_keys=False, default=JSON_UTIL))
 		return json.dumps({'filename': filename, 'errors': errors})
 
 
-@publications.route('/export-search', methods=['GET', 'POST'])
+@sources.route('/export-search', methods=['GET', 'POST'])
 def export_search():
 	""" Ajax route for exporting search results."""
 	if request.method == 'POST':
-		result, num_pages, errors = methods.search_publications(request.json)
+		result, num_pages, errors = methods.search_sources(request.json)
 		if len(result) == 0:
 			errors.append('No records were found matching your search criteria.')
 		# Need to write the results to temp folder
@@ -214,10 +220,10 @@ def export_search():
 		return json.dumps({'filename': filename, 'errors': errors}, default=JSON_UTIL)
 
 
-@publications.route('/update-manifest', methods=['GET', 'POST'])
+@sources.route('/update-manifest', methods=['GET', 'POST'])
 def update_manifest():
 	""" Ajax route for updating manifests."""
-	properties = {'namespace': 'we1sv1.2', 'path': ',Publications,'}
+	properties = {'namespace': 'we1sv2.0', 'path': 'Sources'}
 	errors = []
 	for key, value in request.json.items():
 		if key == 'date':
@@ -225,10 +231,13 @@ def update_manifest():
 			dates = [x.strip() for x in ls]
 			new_dates, error_list = methods.check_date_format(dates)
 			errors = errors + error_list
-			properties[key] = new_dates
+			if new_dates  != []:
+				properties[key] = new_dates
 		elif isinstance(value, list):
 			ls = value.splitlines()
-			properties[key] = [x.strip() for x in ls]
+			ls =  [x.strip() for x in ls]
+			if ls != []:
+				properties[key] = ls
 		elif value != '' and value != ['']:
 			properties[key] = value
 	if methods.validate_manifest(properties) == True:
@@ -253,7 +262,7 @@ def update_manifest():
 	return json.dumps(response)
 
 
-@publications.route('/upload', methods=['GET', 'POST'])
+@sources.route('/upload', methods=['GET', 'POST'])
 def upload():
 	"""Ajax route saves each file uploaded by the import function
 	to the uploads folder. Currently supports only one file.
@@ -287,10 +296,10 @@ def upload():
 	pass
 
 
-@publications.route('/clear')
+@sources.route('/clear')
 def clear():
 	""" Going to this page will quickly empty the datbase.
 	Disable this for production.
 	"""
-	publications_db.delete_many({})
+	sources_db.delete_many({})
 	return 'success'

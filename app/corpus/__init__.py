@@ -632,12 +632,22 @@ def upload():
 
 @corpus.route('/clear')
 def clear():
-	""" Going to this page will quickly empty the datbase.
+	""" Going to this page will quickly empty the database.
 	Disable this for production.
 	"""
 	corpus_db.delete_many({})
 	return 'success'
 
+
+@corpus.route('/clear-metapath/<metapath>')
+def clear_metapath(metapath):
+	""" Going to this page will quickly empty the database
+	of all records along the designaed metapath. Disable this 
+	for production.
+	"""
+	metapath = re.compile('^' + metapath)
+	corpus_db.delete_many({'metapath':{'$regex': metapath}})
+	return 'success'
 
 
 @corpus.route('/launch-jupyter', methods=['GET', 'POST'])

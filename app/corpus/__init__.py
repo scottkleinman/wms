@@ -216,8 +216,6 @@ def update_manifest():
 		if isinstance(created, list) and len(created) == 1:
 			created = created[0]
 		manifest['created'] = created
-		print('Created')
-		print(created)
 
 	if 'updated' in manifest.keys():
 		updated = methods.flatten_datelist(methods.textarea2datelist(manifest['updated']))
@@ -225,7 +223,6 @@ def update_manifest():
 			updated = updated[0]
 		manifest['updated'] = created
 
-	# Handle other textarea strings
 	# Handle other textarea strings
 	list_props = ['sources', 'contributors', 'queryterms', 'processes', 'notes', 'keywords', 'licenses']
 	prop_keys = {

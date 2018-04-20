@@ -24,6 +24,7 @@ from pymongo import MongoClient
 client = MongoClient('mongodb://localhost:27017')
 db = client.we1s
 projects_db = db.Projects
+corpus_db = db.Corpus
 
 projects = Blueprint('projects', __name__, template_folder='projects')
 
@@ -33,7 +34,7 @@ from app.projects.helpers import methods as methods
 # Constants.
 #----------------------------------------------------------------------------#
 
-ALLOWED_EXTENSIONS = ['xlsx']
+ALLOWED_EXTENSIONS = ['zip']
 
 #----------------------------------------------------------------------------#
 # Controllers.
@@ -43,109 +44,55 @@ ALLOWED_EXTENSIONS = ['xlsx']
 def index():
 	"""Projects index page."""
 	scripts = ['js/projects/projects.js']
+	with open("app/templates/projects/template_config.yml", 'r') as stream:
+		templates = yaml.load(stream)
 	return render_template('projects/index.html', scripts=scripts)
 
 
 @projects.route('/create', methods=['GET', 'POST'])
 def create():
 	"""Create manifest page."""
-	scripts = ['js/parsley.min.js', 'js/corpus/corpus.js']
-	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/create', 'label': 'Create Collection'}]
-	with open("app/templates/corpus/template_config.yml", 'r') as stream:
+	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/search.js']
+	styles = ['css/query-builder.default.css']	
+	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/create', 'label': 'Create Project'}]
+	with open("app/templates/projects/template_config.yml", 'r') as stream:
 		templates = yaml.load(stream)
-	return render_template('corpus/create.html', scripts=scripts, templates=templates, breadcrumbs=breadcrumbs)
+	return render_template('projects/create.html', scripts=scripts, styles=styles, templates=templates, breadcrumbs=breadcrumbs)
 
+
+@projects.route('/test-query', methods=['GET', 'POST'])
+def test_query():
+	"""Tests whether the project query returns results 
+	from the Corpus."""
+	query = json.loads(request.json['db-query'])
+	result = corpus_db.find(query)
+	if len(list(result)) > 0:
+		response = """Your query successfully found records in the Corpus database. 
+		If you wish to view the results, please use the 
+		<a href="/corpus/search">Corpus search</a> function."""
+	else:
+		response = """Your query did not return any records in the Corpus database. 
+		Try the <a href="/corpus/search">Corpus search</a> function to obtain a 
+		more accurate query."""
+	if len(list(corpus_db.find())) == 0:
+		response = 'The Corpus database is empty.'
+	return response
 
 @projects.route('/create-manifest', methods=['GET', 'POST'])
 def create_manifest():
 	""" Ajax route for creating manifests."""
+	manifest = {}
 	errors = []
 	data = request.json
-	# data['namespace'] = 'we1sv2.0'
-	# Set name and path by branch
-	if data['nodetype'] == 'collection':
-		try:
-			assert data['metapath'] == 'Corpus'
-		except:
-			errors.append('The <code>metapath</code> for a collection must be "Corpus".')
-	elif data['nodetype'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
-		data['name'] = data['nodetype']
-	else:
-		pass
-	if not data['metapath'].startswith('Corpus'):
-		data['metapath'] = 'Corpus,' + data['metapath']
-	data['metapath'] = data['metapath'].strip(',')
-	# if not data['metapath'].endswith(','):
-	# 	data['path'] += ','
-	# Remove empty values
-	manifest = {}
-	for key, value in data.items():
-		if value != '':
-			manifest[key] = value
-	# Handle dates
-	# if 'date' in manifest.keys():
-	# 	dates = manifest['date'].splitlines()
-	# 	dates = [x.strip() for x in dates]
-	# 	new_dates, error_list = methods.check_date_format(dates)
-	# 	errors = errors + error_list
-	# 	if new_dates  != []:
-	# 		manifest['date'] = dates
-	if 'created' in manifest.keys():
-		created = methods.flatten_datelist(methods.textarea2datelist(manifest['created']))
-		if isinstance(created, list) and len(created) == 1:
-			created = created[0]
-
-	if 'updated' in manifest.keys():
-		updated = methods.flatten_datelist(methods.textarea2datelist(manifest['updated']))
-		if isinstance(updated, list) and len(updated) == 1:
-			updated = updated[0]
-
-	# Handle other textarea strings
-	list_props = ['sources', 'contributors', 'queryterms', 'processes', 'notes', 'keywords', 'licenses']
-	prop_keys = {
-		'sources': { 'main_key': 'title', 'valid_props': ['title', 'path', 'email'] },
-		'contributors': { 'main_key': 'title', 'valid_props': ['title', 'email', 'path', 'role', 'group', 'organization'] },
-		'licenses': { 'main_key': 'name', 'valid_props': ['name', 'path', 'title'] },
-		'queryterms': { 'main_key': '', 'valid_props': [] },
-		'processes': { 'main_key': '', 'valid_props': [] },
-		'notes': { 'main_key': '', 'valid_props': [] },
-		'keywords': { 'main_key': '', 'valid_props': [] }
-	}
-	for item in list_props:
-		if item in manifest and manifest[item] != '':
-			all_lines = methods.textarea2dict(item, manifest[item], prop_keys[item]['main_key'], prop_keys[item]['valid_props'])
-			if all_lines[item] != []:
-				manifest[item] = all_lines[item]
-	nodetype = manifest.pop('nodetype', None)
-	if 'OCR' in manifest.keys() and manifest['OCR'] == "on":
-		manifest['OCR'] = True
-	# Validate the resulting manifest
-	if methods.validate_manifest(manifest, nodetype) == True:
-		database_errors = methods.create_record(manifest)
-		errors = errors + database_errors
-	else:
-		msg = '''A valid manifest could not be created with the 
-		data supplied. Please check your entries against the 
-		<a href="/schema" target="_blank">manifest schema</a>.''' 
-		errors.append(msg)
-
-	manifest = json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL)
-	if len(errors) > 0:
-		error_str = '<ul>'
-		for item in errors:
-			error_str += '<li>' + item + '</li>'
-		error_str += '</ul>'
-	else:
-		error_str = ''
 	response = {'manifest': manifest, 'errors': error_str}
 	return json.dumps(response)
 
 
 @projects.route('/display/<name>')
 def display(name):
-	""" Page for displaying Corpus manifests."""
-	scripts = ['js/parsley.min.js', 'js/corpus/corpus.js']
-	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/display', 'label': 'Display Collection'}]
+	""" Page for displaying Project manifests."""
+	scripts = ['js/parsley.min.js', 'js/projects/projects.js']
+	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/display', 'label': 'Display Project Manifest'}]
 	errors = []
 	manifest = {}
 	result = corpus_db.find_one({'name': name})
@@ -156,29 +103,13 @@ def display(name):
 			if isinstance(value, list):
 				textarea = methods.dict2textarea(value)
 				manifest[key] = textarea
-			# if isinstance(value, list):
-			# 	manifest[key] = []
-			# 	for element in value:
-			# 		if isinstance(element, dict):
-			# 			l = list(methods.NestedDictValues(element))
-			# 			s = ', '.join(l)
-			# 			manifest[key].append(s)
-			# 		else:
-			# 			manifest[key].append(element)
-			# 	manifest[key] = '\n'.join(manifest[key])
 			else:
 				manifest[key] = str(value)
-		if manifest['metapath'] == 'Corpus':
-			nodetype = 'collection'
-		elif manifest['name'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
-			nodetype = manifest['name'].lower()
-		else:
-			nodetype = 'branch'
 		with open("app/templates/corpus/template_config.yml", 'r') as stream:
 			templates = yaml.load(stream)
 	except:
 		errors.append('Unknown Error: The manifest does not exist or could not be loaded.')
-	return render_template('corpus/display.html', scripts=scripts,
+	return render_template('projects/display.html', scripts=scripts,
 		breadcrumbs=breadcrumbs, manifest=manifest, errors=errors,
 		nodetype=nodetype, templates=templates)
 
@@ -188,29 +119,10 @@ def update_manifest():
 	""" Ajax route for updating manifests."""
 	errors = []
 	data = request.json
-	# data['namespace'] = 'we1sv2.0'
-	# Set name and path by branch
-	if data['metapath'] == 'Corpus':
-		data['nodetype'] = 'collection'
-	elif data['name'] in ['RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']:
-		data['nodetype'] = data['name']
-		data['metapath'] = 'Corpus,' + data['metapath']
-	else:
-		data['nodetype'] = 'branch'
-		data['metapath'] = 'Corpus,' + data['metapath']
-	data['metapath'] =  data['metapath'].replace('Corpus,Corpus,', 'Corpus,').strip(',')
-	# Remove empty values
 	manifest = {}
 	for key, value in data.items():
 		if value != '':
 			manifest[key] = value
-	# Handle dates
-	# if 'date' in manifest.keys():
-	# 	ls = manifest['date'].splitlines()
-	# 	dates = [x.strip() for x in ls]
-	# 	new_dates, error_list = methods.check_date_format(dates)
-	# 	errors = errors + error_list
-	# 	manifest['date'] = new_dates
 	if 'created' in manifest.keys():
 		created = methods.flatten_datelist(methods.textarea2datelist(manifest['created']))
 		if isinstance(created, list) and len(created) == 1:
@@ -226,14 +138,11 @@ def update_manifest():
 		manifest['updated'] = created
 
 	# Handle other textarea strings
-	# Handle other textarea strings
-	list_props = ['sources', 'contributors', 'queryterms', 'processes', 'notes', 'keywords', 'licenses']
+	list_props = ['resources', 'contributors', 'notes', 'keywords', 'licenses']
 	prop_keys = {
-		'sources': { 'main_key': 'title', 'valid_props': ['title', 'path', 'email'] },
+		'resources': { 'main_key': 'title', 'valid_props': ['title', 'path', 'email'] },
 		'contributors': { 'main_key': 'title', 'valid_props': ['title', 'email', 'path', 'role', 'group', 'organization'] },
 		'licenses': { 'main_key': 'name', 'valid_props': ['name', 'path', 'title'] },
-		'queryterms': { 'main_key': '', 'valid_props': [] },
-		'processes': { 'main_key': '', 'valid_props': [] },
 		'notes': { 'main_key': '', 'valid_props': [] },
 		'keywords': { 'main_key': '', 'valid_props': [] }
 	}
@@ -242,15 +151,6 @@ def update_manifest():
 			all_lines = methods.textarea2dict(item, manifest[item], prop_keys[item]['main_key'], prop_keys[item]['valid_props'])
 			if all_lines[item] != []:
 				manifest[item] = all_lines[item]
-
-	# list_props = ['publications', 'collectors', 'queryterms', 'processes', 'notes']
-	# for item in list_props:
-	# 	if item in manifest:
-	# 		ls = manifest[item].splitlines()
-	# 		manifest[item] = [x.strip() for x in ls]
-	nodetype = manifest.pop('nodetype', None)
-	if 'OCR' in manifest.keys() and manifest['OCR'] == "on":
-		manifest['OCR'] = True
 
 	# Validate the resulting manifest
 	if methods.validate_manifest(manifest, nodetype) == True:
@@ -398,20 +298,6 @@ def download_export(filename):
 	return response
 
 
-@projects.route('/search1', methods=['GET', 'POST'])
-def search():
-	""" Page for searching Corpus manifests."""
-	scripts = ['js/parsley.min.js', 'js/jquery.twbsPagination.min.js', 'js/corpus/corpus.js']
-	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/search', 'label': 'Search Collections'}]
-	if request.method == 'GET':
-		return render_template('corpus/search.html', scripts=scripts, breadcrumbs=breadcrumbs)
-	if request.method == 'POST':
-		result, num_pages, errors = methods.search_collections(request.json)
-		if result == []:
-			errors.append('No records were found matching your search criteria.')
-		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors})
-
-
 @projects.route('/search', methods=['GET', 'POST'])
 def search2():
 	""" Experimental Page for searching Corpus manifests."""
@@ -441,6 +327,7 @@ def search2():
 		if result == []:
 			errors.append('No records were found matching your search criteria.')
 		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors}, default=JSON_UTIL)
+
 
 @projects.route('/export-search', methods=['GET', 'POST'])
 def export_search():
@@ -482,7 +369,9 @@ def export_search():
 def delete_manifest():
 	""" Ajax route for deleting manifests."""
 	errors = []
-	msg = methods.delete_collection(request.json['name'])
+	name = request.json['name']
+	metapath = request.json['metapath']
+	msg = methods.delete_project(name, metapath)
 	if msg  != 'success':
 		errors.append(msg)
 	return json.dumps({'errors': errors})
@@ -644,39 +533,33 @@ def clear():
 @projects.route('/launch-jupyter', methods=['GET', 'POST'])
 def launch_jupyter():
 	""" Experimental Page to launch a Jupyter notebook."""
-	if request.method == 'POST':
-		try:
-			query = request.json['query']
-			limit = int(request.json['advancedOptions']['limit'])
-			sorting = []
-			if request.json['advancedOptions']['show_properties'] != []:
-				show_properties = request.json['advancedOptions']['show_properties']
-			else:
-				show_properties = '\'\''
-			sorting = []
-			for item in request.json['advancedOptions']['sort']:
-				if item[1] == 'ASC':
-					opt = (item[0], pymongo.ASCENDING)
-				else:
-					opt = (item[0], pymongo.DESCENDING)
-				sorting.append(opt)
-			sorting = "[('name', pymongo.ASCENDING)]"
-			q = 'result = list(corpus_db.find(' + str(query) + ', '
-			q += 'limit=' + str(limit) + ', '
-			q += 'projection=' + str(show_properties) + ')'
-			if sorting != []:
-				q += '.sort(' + str(sorting) + ')'
-			q += ')'
-			template_path = os.path.join('app', 'jupyter_notebook_template.ipynb')
-			with open(template_path, 'r') as f:
-				doc = f.read()
-			doc = doc.replace('USER_QUERY', q)
-			file_path = os.path.join('app', 'WMS_query.ipynb')
-			with open(file_path, 'w') as f:
-				f.write(doc)
-			# This works but breaks the Flask process, even with shell=True
-			# subprocess.call(['jupyter', 'notebook'], shell=False)
-			subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
-			return 'success'
-		except:
-			return 'error'
+	try:
+		notebook = request.json['notebook']
+		query = request.json['data']['db-query']
+		querystring = 'result = list(corpus_db.find(' + str(query) + '))'
+		manifest = {}
+		manifest_props = [
+			'name', 'metapath', 'namespace', 'title', 'contributors', 
+			'created', 'id', '_id', 'description', 'version', 
+			'shortTitle', 'label', 'notes', 'keywords', 'image', 
+			'updated', 'licenses'
+		]
+		for k, v in request.json['data'].items():
+			if k in manifest_props and v != '':
+				manifest[k] = v
+		m = str(manifest)
+		querystring = querystring.replace('"', '\\"')
+		m = 'manifest = ' + m.replace('\'', '\\"')
+		template_path = os.path.join('app', 'new_topic_model_project_template.ipynb')
+		with open(template_path, 'r') as f:
+			doc = f.read()
+		doc = doc.replace('MANIFEST', m)
+		doc = doc.replace('USER_QUERY', querystring)
+		filename = manifest['name'] + '.ipynb'
+		file_path = os.path.join('app', filename)
+		with open(file_path, 'w') as f:
+			f.write(doc)
+		subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
+		return 'success'
+	except:
+		return 'error'

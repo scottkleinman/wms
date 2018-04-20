@@ -53,14 +53,14 @@ function createManifest(jsonform) {
 }
 
 
-function deleteManifest(name) {
+function deleteManifest(name, metapath) {
 	/* Deletes a manifest
 	   Input: A name value
 	   Returns: An array of errors for display */
 	$.ajax({
 		method: "POST",
 		url: "/sources/delete-manifest",
-		data: JSON.stringify({"name": name}),
+		data: JSON.stringify({"name": name, "metapath": metapath}),
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
@@ -366,6 +366,7 @@ $(document).ready(function() {
 	$('#delete').click(function(e){
 		e.preventDefault();
     	var name = $('#name').val();
+    	var metapath = $('#metapath').val();
 	    bootbox.confirm({
 	        message: 'Are you sure you wish to delete <code>' + name + '</code>?',
 	        buttons: {
@@ -374,7 +375,7 @@ $(document).ready(function() {
 	        },
 	        callback: function (result) {
 	        	if (result == true) {
-	        		deleteManifest(name);
+	        		deleteManifest(name, metapath);
 	        	}
 	        }
 	    });

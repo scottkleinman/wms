@@ -358,9 +358,10 @@ def update_record(manifest):
 	nodetype = 'collection'
 	if validate_manifest(manifest, nodetype) == True:
 		name = manifest.pop('name')
+		metapath = manifest['metapath']
 		_id = manifest.pop('_id')
 		try:
-			corpus_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
+			corpus_db.update_one({'name': name, 'metapath': metapath}, {'$set': manifest}, upsert=False)
 		except pymongo.errors.PyMongoError as e:
 			# print(e.__dict__.keys())
 			# print(e._OperationFailure__details)

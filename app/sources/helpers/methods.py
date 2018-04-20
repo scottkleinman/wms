@@ -373,11 +373,11 @@ def update_record(manifest):
 	"""
 	errors = []
 	if validate_manifest(manifest) == True:
-		print(manifest)
 		name = manifest.pop('name')
+		metapath = manifest['metapath']
 		_id = manifest.pop('_id')
 		try:
-			sources_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
+			sources_db.update_one({'name': name, 'metapath': metapath}, {'$set': manifest}, upsert=False)
 		except:
 			msg = 'Unknown Error: The record for <code>name</code> <strong>' + name + '</strong> could not be updated.'
 			errors.append(msg)

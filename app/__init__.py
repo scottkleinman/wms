@@ -58,7 +58,7 @@ def guide():
 @app.route('/schema')
 def schema():
 	breadcrumbs = [{'link': '/schema', 'label': 'Manifest Schema Documentation'}]
-	f = urllib.request.urlopen('https://github.com/whatevery1says/manifest/raw/master/we1s-manifest-schema-1.1.md')
+	f = urllib.request.urlopen('https://github.com/whatevery1says/manifest/raw/master/we1s-manifest-schema-2.0.md')
 	md = f.read().decode('utf-8')	
 	html = markdown.markdown(md, ['markdown.extensions.extra'])
 	html = html.replace('<h1>WhatEvery1Says Schema</h1>', '')

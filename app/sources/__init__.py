@@ -112,7 +112,9 @@ def create_manifest():
 def delete_manifest():
 	""" Ajax route for deleting manifests."""
 	errors = []
-	msg = methods.delete_source(request.json['name'])
+	name = request.json['name']
+	metapath = request.json['metapath']
+	msg = methods.delete_source(name, metapath)
 	if msg != 'success':
 		errors.append(msg)
 	return json.dumps({'errors': errors})

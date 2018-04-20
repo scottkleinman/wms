@@ -482,7 +482,9 @@ def export_search():
 def delete_manifest():
 	""" Ajax route for deleting manifests."""
 	errors = []
-	msg = methods.delete_collection(request.json['name'])
+	name = request.json['name']
+	metapath = request.json['metapath']
+	msg = methods.delete_collection(name, metapath)
 	if msg  != 'success':
 		errors.append(msg)
 	return json.dumps({'errors': errors})

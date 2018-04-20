@@ -250,12 +250,12 @@ def create_record(manifest):
 	return errors
 
 
-def delete_collection(name):
+def delete_collection(name, metapath):
 	"""Deletes a collection manifest based on name.
 
 	Returns 'success' or an error message string.
 	"""
-	result = corpus_db.delete_one({'name': name})
+	result = corpus_db.delete_one({'name': name, 'metapath': metapath})
 	if result.deleted_count != 0:
 		return 'success'
 	else:

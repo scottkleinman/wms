@@ -240,13 +240,13 @@ def create_record(manifest):
 	return errors
 
 
-def delete_source(name):
+def delete_source(name, metapath):
 	"""
 	Deletes a source manifest based on name.
 
 	Returns 'success' or an error message string.
 	"""
-	result = sources_db.delete_one({'name': name})
+	result = sources_db.delete_one({'name': name, 'metapath': metapath})
 	if result.deleted_count != 0:
 		return 'success'
 	else:

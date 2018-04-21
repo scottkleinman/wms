@@ -571,7 +571,7 @@ def save_upload():
 				# Now start creating a data manifest for each file and inserting it
 				for filename in os.listdir(mydir):
 					filepath = os.path.join(mydir, filename)
-					metapath = node_metadata['metapath'] + ',' + node_metadata['name'] + ','
+					metapath = node_metadata['metapath'] + ',' + node_metadata['name']
 					manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv2.0', 'metapath': metapath}
 					try:
 						with open(filepath, 'rb') as f:

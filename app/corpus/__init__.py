@@ -435,6 +435,10 @@ def search2():
 				opt = (item[0], pymongo.DESCENDING)
 			sorting.append(opt)
 		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties, sorting)
+		# Don't show the MongoDB _id unless it is in show_properties
+		if '_id' not in request.json['advancedOptions']['show_properties']:
+			for k, v in enumerate(result):
+				del result[k]['_id']
 		if result == []:
 			errors.append('No records were found matching your search criteria.')
 		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors}, default=JSON_UTIL)

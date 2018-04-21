@@ -96,8 +96,12 @@ td { cursor: move !important;}
         <tbody>
             {% set shown = ['created', 'description', 'name', 'metapath', 'title'] %}
             {% for item in fields %}
+            {% if item == 'name' %}
+            <tr data-id="{{loop.index}}" data-name="{{item}}" data-direction="ASC" data-show="{{'true' if item in shown}}">
+            {% else %}
             <tr data-id="{{loop.index}}" data-name="{{item}}" data-direction="none" data-show="{{'true' if item in shown}}">
-                        <td>
+            {% endif %}    
+                <td>
                     <div class="custom-control custom-checkbox">
                         {% if item in shown %}
                         <input type="checkbox" class="custom-control-input show" checked="checked">
@@ -108,7 +112,10 @@ td { cursor: move !important;}
                 </td>
                 <td>{{item}}</td>
                 <td>
-                    <select class="form-control form-control-sm direction" style="width: 75px;"><option value="none">None</option><option value="ASC">ASC</option><option value="DESC">DESC</option>
+                    <select class="form-control form-control-sm direction" style="width: 75px;">
+                        <option value="none">None</option>
+                        <option value="ASC" {{ 'selected="selected"' if item == 'name' }}>ASC</option>
+                        <option value="DESC">DESC</option>
                     </select>
                 </td>    
             </tr>

@@ -7,6 +7,7 @@ from tableschema_pandas import Storage
 
 import pymongo
 from pymongo import MongoClient
+from pymongo.collation import Collation
 
 # Set up the MongoDB client, configure the databases, and assign variables to the "collections" 
 client = MongoClient('mongodb://localhost:27017')
@@ -326,9 +327,11 @@ def search_corpus(query, limit, paginated, page, show_properties, sorting):
 		result = corpus_db.find(
 			query,
 			limit=limit,
-			projection=show_properties)
+			projection=show_properties).collation(Collation(locale='en_US', numericOrdering=True))
 		if sorting != []:
 			result = result.sort(sorting)
+		else:
+			result = result.sort('name', pymongo.ASCENDING)
 		result = list(result)
 		if result != []:
 			# Double the result for testing

@@ -42,7 +42,7 @@ var schema = [
 },
 {
     'id': 'encoding',
-    'label': 'encodingh',
+    'label': 'encoding',
     'type': 'string',
     'size': 30
 },

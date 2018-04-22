@@ -633,25 +633,24 @@ def upload():
 			response = {'errors': errors}
 		return json.dumps(response)					
 
-
-@corpus.route('/clear')
-def clear():
-	""" Going to this page will quickly empty the database.
+@corpus.route('/clear/<metapath>')
+def clear(metapath):
+	""" Going to this page will quickly empty the database
+	of all records along the designated metapath. Use the
+	metapath 'all' for delete all records in the database.
 	Disable this for production.
 	"""
-	corpus_db.delete_many({})
-	return 'success'
-
-
-@corpus.route('/clear-metapath/<metapath>')
-def clear_metapath(metapath):
-	""" Going to this page will quickly empty the database
-	of all records along the designaed metapath. Disable this 
-	for production.
-	"""
-	metapath = re.compile('^' + metapath)
-	corpus_db.delete_many({'metapath':{'$regex': metapath}})
-	return 'success'
+	try:
+		if metapath == 'all':
+			corpus_db.delete_many({})
+			response = 'All records in Corpus database were deleted.'
+		else:
+			metapath = re.compile('^' + metapath)
+			corpus_db.delete_many({'metapath':{'$regex': metapath}})
+			response = 'Delete all records under ' + metapath + '.'
+	except:
+		response = 'There was an error. No records were deleted.'
+	return response
 
 
 @corpus.route('/launch-jupyter', methods=['GET', 'POST'])

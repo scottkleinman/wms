@@ -572,28 +572,50 @@ def save_upload():
 				# 		corpus_db.insert_one(node_metadata)
 				# 	except:
 				# 		print('Could not create a RawData node.')
-				# Now start creating a data manifest for each file and inserting it
+				# Start by unzipping any zip archives
 				for filename in os.listdir(mydir):
-					filepath = os.path.join(mydir, filename)
-					metapath = node_metadata['metapath'] + ',' + node_metadata['name']
-					manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv2.0', 'metapath': metapath}
-					try:
-						with open(filepath, 'rb') as f:
-							doc = json.loads(f.read())
-							for key, value in doc.items():
-								if key not in ['name', 'namespace', 'metapath']:
-									manifest[key] = value
-					except:
-						errors.append('The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
-					schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/Data.json'
-					schema = json.loads(requests.get(schema_file).text)
-					try:
-						methods.validate(manifest, schema, format_checker=FormatChecker())
-						result = methods.create_record(manifest)
-						errors = errors + result
-					except:
-						print('Could not validate manifest for ' + filename)
-						errors.append('A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.')
+					if filename.endswith('.zip'):
+						try:
+							# Unzip it the archive
+							filepath = os.path.join(mydir, filename)
+							with zipfile.ZipFile(filepath) as zf:
+								zf.extractall(mydir)
+							# Move the files up to the main uploads folder
+							extracted_folder = os.path.splitext(filename)[0]
+							sourcepath = os.path.join(mydir, extracted_folder)
+							for file in os.listdir(sourcepath):
+								if file.endswith('.json'):
+									shutil.move(os.path.join(sourcepath, file), os.path.join(mydir, file))
+							# Remove the zip archive and empty folder
+							os.remove(filepath)
+							os.rmdir(sourcepath)
+						except:
+							errors.append('<p>Unknown Error: Could not process the zip file <code>' + file.filename + '</code>.</p>')
+				# Now create a data manifest for each file and insert it
+				for filename in os.listdir(mydir):
+					if filename.endswith('.json'):
+						filepath = os.path.join(mydir, filename)
+						metapath = node_metadata['metapath'] + ',' + node_metadata['name']
+						manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv2.0', 'metapath': metapath}
+						try:
+							with open(filepath, 'rb') as f:
+								doc = json.loads(f.read())
+								for key, value in doc.items():
+									if key not in ['name', 'namespace', 'metapath']:
+										manifest[key] = value
+						except:
+							errors.append('The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
+						schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/Data.json'
+						schema = json.loads(requests.get(schema_file).text)
+						try:
+							methods.validate(manifest, schema, format_checker=FormatChecker())
+							result = methods.create_record(manifest)
+							errors = errors + result
+						except:
+							print('Could not validate manifest for ' + filename)
+							errors.append('A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.')
+					else:
+						pass	
 				# We're done. Empty the uploads folder.
 				mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
 				list(map(os.unlink, (os.path.join(mydir,f) for f in os.listdir(mydir))))
@@ -617,7 +639,8 @@ def upload():
 		errors = []
 		for file in request.files.getlist('file'):
 			# Accept only json files for now...
-			if file.filename.endswith('.json'):
+			fn = file.filename
+			if fn.endswith('.json') or fn.endswith('.zip'):
 				try:
 					filename = secure_filename(file.filename)
 					file_to_save = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)

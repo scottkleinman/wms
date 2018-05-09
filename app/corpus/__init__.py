@@ -573,10 +573,13 @@ def save_upload():
 				# 	except:
 				# 		print('Could not create a RawData node.')
 				# Start by unzipping any zip archives
+				# NB. This only handles top-level folders. There  
+				# should be a routine to detect and parse datapackage.json
+				# so that predictable multi-level archives can be loaded.
 				for filename in os.listdir(mydir):
 					if filename.endswith('.zip'):
 						try:
-							# Unzip it the archive
+							# Unzip the archive
 							filepath = os.path.join(mydir, filename)
 							with zipfile.ZipFile(filepath) as zf:
 								zf.extractall(mydir)

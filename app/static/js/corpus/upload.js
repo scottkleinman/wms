@@ -11,7 +11,7 @@ previewNode.parentNode.removeChild(previewNode);
 /* Initiate the dropzone in the document body */
 var myDropzone = new Dropzone(document.body, {
   url: "/corpus/upload",
-  acceptedFiles: '.json',
+  acceptedFiles: '.json, .zip',
   thumbnailWidth: 80,
   thumbnailHeight: 80,
   parallelUploads: 20,

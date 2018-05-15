@@ -56,7 +56,7 @@ def create():
 	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/search.js']
 	styles = ['css/query-builder.default.css']	
 	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/create', 'label': 'Create Project'}]
-	with open("app/templates/projects/template_config.yml", 'r') as stream:
+	with open('app/templates/projects/template_config.yml', 'r') as stream:
 		templates = yaml.load(stream)
 	return render_template('projects/create.html', scripts=scripts, styles=styles, templates=templates, breadcrumbs=breadcrumbs)
 
@@ -79,40 +79,43 @@ def test_query():
 		response = 'The Corpus database is empty.'
 	return response
 
-@projects.route('/create-manifest', methods=['GET', 'POST'])
-def create_manifest():
-	""" Ajax route for creating manifests."""
-	manifest = {}
-	errors = []
-	data = request.json
-	response = {'manifest': manifest, 'errors': error_str}
-	return json.dumps(response)
+# @projects.route('/create-manifest', methods=['GET', 'POST'])
+# def create_manifest():
+# 	""" Ajax route for creating manifests."""
+# 	manifest = {}
+# 	errors = []
+# 	data = request.json
+# 	response = {'manifest': manifest, 'errors': error_str}
+# 	return json.dumps(response)
 
 
 @projects.route('/display/<name>')
 def display(name):
 	""" Page for displaying Project manifests."""
-	scripts = ['js/parsley.min.js', 'js/projects/projects.js']
+	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/search.js']
+	styles = ['css/query-builder.default.css']	
 	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/display', 'label': 'Display Project Manifest'}]
 	errors = []
 	manifest = {}
-	result = corpus_db.find_one({'name': name})
 	try:
-		result = corpus_db.find_one({'name': name})
+		result = projects_db.find_one({'name': name})
 		assert result != None
 		for key, value in result.items():
-			if isinstance(value, list):
+			if key == 'content':
+				pass
+			elif isinstance(value, list):
 				textarea = methods.dict2textarea(value)
 				manifest[key] = textarea
 			else:
 				manifest[key] = str(value)
-		with open("app/templates/corpus/template_config.yml", 'r') as stream:
+		print(manifest)
+		with open('app/templates/projects/template_config.yml', 'r') as stream:
 			templates = yaml.load(stream)
 	except:
 		errors.append('Unknown Error: The manifest does not exist or could not be loaded.')
 	return render_template('projects/display.html', scripts=scripts,
 		breadcrumbs=breadcrumbs, manifest=manifest, errors=errors,
-		nodetype=nodetype, templates=templates)
+		templates=templates)
 
 
 @projects.route('/update-manifest', methods=['GET', 'POST'])
@@ -139,6 +142,7 @@ def update_manifest():
 		manifest['updated'] = created
 
 	# Handle other textarea strings
+	# Might be an issue here -- what are "resources". Is that in the schema?
 	list_props = ['resources', 'contributors', 'notes', 'keywords', 'licenses']
 	prop_keys = {
 		'resources': { 'main_key': 'title', 'valid_props': ['title', 'path', 'email'] },
@@ -154,7 +158,8 @@ def update_manifest():
 				manifest[item] = all_lines[item]
 
 	# Validate the resulting manifest
-	if methods.validate_manifest(manifest, nodetype) == True:
+	if methods.validate_manifest(manifest) == True:
+		# errors = ['The manifest validated.']
 		database_errors = methods.update_record(manifest)
 		errors = errors + database_errors
 	else:

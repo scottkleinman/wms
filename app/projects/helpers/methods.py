@@ -13,6 +13,7 @@ from pymongo import MongoClient
 client = MongoClient('mongodb://localhost:27017')
 db = client.we1s
 corpus_db = db.Corpus
+projects_db = db.Projects
 
 #----------------------------------------------------------------------------#
 # General Helper Functions
@@ -192,19 +193,18 @@ def reshape_query_props(temp_query, temp_show_properties):
 	return query_props, show_props
 
 
-def validate_manifest(manifest, nodetype):
+def validate_manifest(manifest):
 	"""Validates a manifest against the WE1S schema on GitHub.
 
 	Takes a manifest dict and a nodetype string (which identifies
 	which subschema to validate against). Returns a Boolean.
 	"""
-	url = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/'	
-	if nodetype in ['collection', 'RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results', 'Data']:
-		filename = nodetype + '.json'
-	else:
-		filename = 'PathNode.json'
+	url = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Projects/'
+	filename = 'Projects.json'
 	schema_file = url + filename
 	schema = json.loads(requests.get(schema_file).text)
+	# Add a dummy string so that the content property validates
+	manifest['content'] = manifest['name'] + '.zip'
 	try:
 		validate(manifest, schema, format_checker=FormatChecker())
 		return True
@@ -257,7 +257,7 @@ def delete_project(name, metapath):
 
 	Returns 'success' or an error message string.
 	"""
-	result = corpus_db.delete_one({'name': name, 'metapath': metapath})
+	result = projects_db.delete_one({'name': name, 'metapath': metapath})
 	if result.deleted_count != 0:
 		return 'success'
 	else:
@@ -356,20 +356,15 @@ def update_record(manifest):
 	Takes a manifest dict and returns a list of errors if any.
 	"""
 	errors = []
-	# Need to set the nodetype
-	nodetype = 'collection'
-	if validate_manifest(manifest, nodetype) == True:
-		name = manifest.pop('name')
-		_id = manifest.pop('_id')
-		try:
-			corpus_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
-		except pymongo.errors.PyMongoError as e:
-			# print(e.__dict__.keys())
-			# print(e._OperationFailure__details)
-			msg = 'Unknown Error: The record for <code>name</code> <strong>' + name + '</strong> could not be updated.'
-			errors.append(msg)
-	else:
-		errors.append('Unknown Error: Could not produce a valid manifest.')
+	name = manifest.pop('name')
+	_id = manifest.pop('_id')
+	try:
+		projects_db.update_one({'name': name}, {'$set': manifest}, upsert=False)
+	except pymongo.errors.PyMongoError as e:
+		# print(e.__dict__.keys())
+		# print(e._OperationFailure__details)
+		msg = 'Unknown Error: The record for <code>name</code> <strong>' + name + '</strong> could not be updated.'
+		errors.append(msg)
 	return errors
 
 

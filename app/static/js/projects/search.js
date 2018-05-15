@@ -331,3 +331,151 @@ $(document).ready(function () {
       })
   }
 })
+
+/* Toggles the Edit/Update button and field disabled property */
+$('#update').click(function (e) {
+  e.preventDefault()
+  // if ($('#update').html() === 'Edit') {
+  if (!$(this).hasClass('editable')) {
+    $('form').find('input, textarea, select').each(function () {
+      if ($(this).attr('id') !== 'name') {
+        $(this).prop('readonly', false)
+        $(this).removeClass('disabled')
+      }
+      if ($(this).attr('id') === 'metapath') {
+        $(this).prop('readonly', true)
+        $(this).addClass('disabled')
+      }
+    })
+    // $('#update').html('Update')
+    $(this).addClass('editable')
+    $('#update').html('<i class="fa fa-save"></i>')
+  } else {
+    var name = $('#name').val()
+    bootbox.confirm({
+      message: 'Are you sure you wish to update the record for <code>' + name + '</code>?',
+      buttons: {
+        confirm: {label: 'Yes', className: 'btn-success'},
+        cancel: {label: 'No', className: 'btn-danger'}
+      },
+      callback: function (result) {
+        if (result === true) {
+          var name = $('#name').val()
+          var path = $('#path').val()
+          var jsonform = jsonifyForm($('#manifestForm'))
+          $.extend(jsonform, {'name': name})
+          $.extend(jsonform, {'path': path})
+          updateManifest(jsonform, name)
+        }
+      }
+    })
+  }
+})
+
+function updateManifest (jsonform, name) {
+  /* Updates the displayed manifest
+  Input: A JSON serialisation of the form values
+  Returns: A copy of the manifest and an array of errors for display */
+  var manifest = JSON.stringify(jsonform, null, '  ')
+  $.ajax({
+    method: 'POST',
+    url: '/projects/update-manifest',
+    data: manifest,
+    contentType: 'application/json;charset=UTF-8'
+  })
+    .done(function (response) {
+      var manifest = JSON.parse(response)['manifest']
+      var errors = JSON.parse(response)['errors']
+      if (errors !== '') {
+        var msg = '<p>Could not update the manifest because of the following errors:</p>' + errors
+      } else {
+        msg = '<p>Updated the following manifest:</p>' + manifest
+      }
+      $(this).removeClass('editable')
+      $('#update').html('<i class="fa fa-pencil"></i>')
+      bootbox.alert({
+        message: msg,
+        callback: function () {
+          //window.location = '/projects'
+        }
+      })
+    })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      bootbox.alert({
+        message: '<p>The manifest could not be updated because of the following errors:</p>'+response,
+        callback: function () {
+          $(this).removeClass('editable')
+          $('#update').html('<i class="fa fa-pencil"></i>')
+          return 'Error: ' + textStatus + ': ' + errorThrown
+        }
+      })
+    })
+}
+
+/* Handles the manifest preview and hide buttons */
+$('#preview').click(function (e) {
+  e.preventDefault()
+  $('form').hide()
+  $('#previewDisplay').show()
+  var jsonform = jsonifyForm($('#manifestForm'))
+  $('#manifest').html(JSON.stringify(jsonform, null, '  '))
+})
+
+$('#hide').click(function (e) {
+  e.preventDefault()
+  $('#previewDisplay').hide()
+  $('form').show()
+})
+
+/* Handles the Delete button */
+$('#delete').click(function (e) {
+  e.preventDefault()
+  var name = $('#name').val()
+  var metapath = $('#metapath').val()
+  bootbox.confirm({
+    message: 'Are you sure you wish to delete <code>' + name + '</code>?',
+    buttons: {
+      confirm: {label: 'Yes', className: 'btn-success'},
+      cancel: {label: 'No', className: 'btn-danger'}
+    },
+    callback: function (result) {
+      if (result === true) {
+        deleteManifest(name, metapath)
+      }
+    }
+  })
+})
+
+function deleteManifest (name, metapath) {
+  /* Deletes a manifest
+  Input: A name value
+  Returns: An array of errors for display */
+  $.ajax({
+    method: 'POST',
+    url: '/projects/delete-manifest',
+    data: JSON.stringify({'name': name, 'metapath': metapath}),
+    contentType: 'application/json;charset=UTF-8'
+  })
+    .done(function (response) {
+      var errors = JSON.parse(response)['errors']
+      if (errors !== '') {
+        var msg = '<p>Could not delete the manifest because of the following errors:</p>' + errors;
+      } else {
+        msg = '<p>The manifest for <code>' + name + '</code> was deleted.</p>'
+      }
+      bootbox.alert({
+        message: msg,
+        callback: function () {
+          window.location = '/projects'
+        }
+      })
+    })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      bootbox.alert({
+        message: '<p>The manifest could not be saved because of the following errors:</p>',
+        callback: function () {
+          return 'Error: ' + textStatus + ': ' + errorThrown
+        }
+      })
+    })
+}

@@ -1,5 +1,6 @@
 import os, tabulator, itertools, requests, json, re, zipfile, shutil
 from datetime import datetime
+from flask import current_app
 from jsonschema import validate, FormatChecker
 from tabulator import Stream
 import pandas as pd
@@ -220,8 +221,9 @@ def zipfolder(source_dir, output_filename):
 	Note that the output filename should not have the 
 	.zip extension; it is added here.
 	"""
-	# Output filename should be passed to this function without the .zip extension           
-	zipobj = zipfile.ZipFile(output_filename + '.zip', 'w', zipfile.ZIP_DEFLATED)
+	temp_folder = os.path.join('app', current_app.config['TEMP_FOLDER'])
+	output_filepath = os.path.join(temp_folder, output_filename + '.zip')
+	zipobj = zipfile.ZipFile(output_filepath, 'w', zipfile.ZIP_DEFLATED)
 	rootlen = len(source_dir) + 1
 	for base, dirs, files in os.walk(source_dir):
 		for file in files:

@@ -1,4 +1,5 @@
 import os, tabulator, itertools, requests, json, re, zipfile, shutil
+from pathlib import Path
 import subprocess
 import yaml
 
@@ -174,112 +175,66 @@ def update_manifest():
 	return json.dumps(response)
 
 
-@projects.route('/send-export', methods=['GET', 'POST'])
-def send_export():
+@projects.route('/export-project', methods=['GET', 'POST'])
+def export_project():
 	""" Ajax route to process user export options and write 
 	the export files to the temp folder.
 	"""
-	data = request.json
-	# The user only wants to print the manifest
-	if data['exportoptions'] == ['manifestonly']:
-		query = {'name': data['name'], 'metapath': data['metapath']}
-		try:
-			result = corpus_db.find_one(query)
-			assert result != None
-			manifest = {}
-			for key, value in result.items():
-				if value != '' and value != []:
-					manifest[key] = value
-			manifest = json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL)
-			filename = data['name'] + '.json'
-			doc = filename
-			methods.make_dir('app/temp')
-			filepath = os.path.join('app/temp', filename)
-			with open(filepath, 'w') as f:
-				f.write(manifest)
-		except:
-			print('Could not find the manifest in the database.')
-	# The user wants a zip of multiple data documents
-	else:
-		# Get the exportoptions with the correct case
-		methods.make_dir('app/temp/Corpus')
-		name = data['name']
-		metapath = data['metapath']
-		# Ensures that there is a Corpus and collection folder with a collection manifest
-		methods.make_dir('app/temp/Corpus')
-		if metapath == 'Corpus':
-			collection = name
-		else:
-			collection = path.split(',')[2]
-		methods.make_dir('app/temp/Corpus/' + collection)
-		# result = corpus_db.find_one({'metapath': metapath, 'name': collection})
-		result = corpus_db.find_one({'metapath': metapath})
-		# assert result != None
-		manifest = {}
-		for key, value in result.items():
-			if value != '' and value != []:
-				manifest[key] = value
-		manifest = json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL)
-		filename = name + '.json'
-		filepath = os.path.join('app/temp/Corpus', filename)
-		with open(filepath, 'w') as f:
-			f.write(manifest)
-		exportoptions = []
-		exportopts = [x.replace('export', '') for x in data['exportoptions']]
-		exclude = []
-		options = ['Corpus', 'RawData', 'ProcessedData', 'Metadata', 'Outputs', 'Results']
-		if not metapath.startswith('Corpus,'):
-			metapath = 'Corpus,' + metapath
-		for option in options:
-			if option.lower() in exportopts:
-				exportoptions.append(option)
-			else:
-				exclude.append('Corpus' + ',' + name + ',' + option + ',.*')
-		# We have a path and a list of metapaths to exclude
-		excluded = '|'.join(exclude)
-		excluded = re.compile(excluded)
-		regex_path = re.compile(metapath + name + ',.*')
-		result = corpus_db.find(
-			{'metapath': {
-				'$regex': regex_path,
-				'$not': excluded
-			}}
-		)
-		for item in list(result):
-			# Handle schema node manifests
-			path = item['metapath'].replace(',', '/')
-			if item['name'] in exportoptions:
-				folder_path = os.path.join(path, item['name'])
-				methods.make_dir('app/temp' + folder_path)
-				folder = 'app/temp' + path
-				doc = item['name'] + '.json'
-			# Handle data and branches
-			else:
-				# If the document has content, just give it a filename
-				try:
-					assert item['content']
-					doc = item['name'] + '.json'
-					folder = 'app/temp' + path
-					methods.make_dir(folder)
-				# Otherwise, use it to create a folder with a manifest file
-				except:
-					path = os.path.join(path, item['name'])
-					folder = 'app/temp' + path
-					methods.make_dir(folder)
-					doc = item['name'] + '.json'
-			filepath = os.path.join(folder, doc)
-			output = json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL)
-			with open(filepath, 'w') as f:
-				f.write(output)
-		# Zip up the file structure
-		try:
-			source_dir = 'app/temp/Corpus'
-			doc = 'Corpus.zip'
-			methods.zipfolder(source_dir, source_dir)
-		except:
-			print('Could not make zip archive.')
-	return json.dumps({'filename': doc})
+	errors = []
+	# Remove empty form values and form builder parameters
+	data = {}
+	for k, v in request.json['data'].items():
+		if v != '' and not k.startswith('builder_'):
+			data[k] = v
 
+	# Add the resources property 
+	resources = []
+	for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
+		resources.append({'path': '/' + folder})
+	data['resources'] = resources
+
+	# Remove the query so the data dict is a valid datapackage.
+	# This could be left in if people wanted it for the record.
+	query = json.loads(data.pop('db-query'))
+
+	# Define a project name
+	project_name = data['name']
+	zipfilename = project_name + '.zip'
+
+	# Create the project folder and save the datapackage to it
+	temp_folder = os.path.join('app', current_app.config['TEMP_FOLDER'])
+	project_dir = os.path.join(temp_folder, project_name)
+	Path(project_dir).mkdir(parents=True, exist_ok=True)
+	# Make the standard folders
+	for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
+		new_folder = Path(project_dir) / folder
+		Path(new_folder).mkdir(parents=True, exist_ok=True)
+	# Write the datapackage
+	datapackage = os.path.join(project_dir, 'datapackage.json')
+	with open(datapackage, 'w') as f:
+		f.write(json.dumps(data, indent=2, sort_keys=False, default=JSON_UTIL))
+
+	# Query the database
+	result = list(corpus_db.find(query))
+	if len(result) == 0:
+		errors.append('No records were found matching your search criteria.')
+	else:
+		for item in result:
+			# Make sure every metapath is a directory
+			path = Path(project_dir) / item['metapath'].replace(',', '/')
+			Path(path).mkdir(parents=True, exist_ok=True)
+			
+			# Write a file for every manifest -- only handles json
+			if 'content' in item:
+				filename = item['name'] + '.json'
+				filepath = path / filename
+				with open(filepath, 'w') as f:
+					f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
+		# Zip the project_dir to the temp folder and send the file
+		methods.zipfolder(project_dir, project_name)
+
+	# Return the filename so that the browser can retrieve it
+	return json.dumps({'filename': zipfilename, 'errors': errors}, default=JSON_UTIL)
 
 @projects.route('/download-export/<filename>', methods=['GET', 'POST'])
 def download_export(filename):
@@ -550,7 +505,7 @@ def launch_jupyter():
 		m = str(manifest)
 		querystring = querystring.replace('"', '\\"')
 		m = 'manifest = ' + m.replace('\'', '\\"')
-		template_path = os.path.join('app', 'new_topic_model_project_template.ipynb')
+		template_path = os.path.join('app', 'new_topic_browser_project.ipynb')
 		with open(template_path, 'r') as f:
 			doc = f.read()
 		doc = doc.replace('MANIFEST', m)

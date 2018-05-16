@@ -53,7 +53,7 @@ def index():
 @projects.route('/create', methods=['GET', 'POST'])
 def create():
 	"""Create manifest page."""
-	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/search.js']
+	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/projects.js', 'js/projects/search.js']
 	styles = ['css/query-builder.default.css']	
 	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/create', 'label': 'Create Project'}]
 	with open('app/templates/projects/template_config.yml', 'r') as stream:
@@ -88,12 +88,11 @@ def test_query():
 # 	response = {'manifest': manifest, 'errors': error_str}
 # 	return json.dumps(response)
 
-
 @projects.route('/display/<name>')
 def display(name):
 	""" Page for displaying Project manifests."""
-	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/search.js']
-	styles = ['css/query-builder.default.css']	
+	scripts = ['js/parsley.min.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/projects.js']
+	styles = []	
 	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/display', 'label': 'Display Project Manifest'}]
 	errors = []
 	manifest = {}
@@ -200,6 +199,7 @@ def export_project():
 
 	# Remove the query so the data dict is a valid datapackage.
 	# This could be left in if people wanted it for the record.
+	# From display, the Ajax function does not send a db-query.
 	query = json.loads(data.pop('db-query'))
 
 	# Define a project name

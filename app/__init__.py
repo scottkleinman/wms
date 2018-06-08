@@ -8,6 +8,7 @@ import os, json, re, urllib, markdown
 from .sources import sources
 from .corpus import corpus
 from .projects import projects
+from .tasks import tasks
 
 # Import constants
 # import app.helpers.methods as methods
@@ -25,6 +26,7 @@ app = Flask(__name__, instance_relative_config=True)
 app.register_blueprint(sources, url_prefix='/sources')
 app.register_blueprint(corpus, url_prefix='/corpus')
 app.register_blueprint(projects, url_prefix='/projects')
+app.register_blueprint(tasks, url_prefix='/tasks')
 
 # Configurations
 app.config.from_object('config')

@@ -307,7 +307,7 @@ def send_export():
 		if metapath == 'Corpus':
 			collection = name
 		else:
-			collection = path.split(',')[2]
+			collection = metapath.split(',')[2]
 		methods.make_dir('app/temp/Corpus/' + collection)
 		# result = corpus_db.find_one({'metapath': metapath, 'name': collection})
 		result = corpus_db.find_one({'metapath': metapath})
@@ -500,8 +500,83 @@ def import_data():
 	'js/corpus/corpus.js',
 	'js/corpus/upload.js'
 	]
+	result = get_server_files()
+	# Needs better error handling
+	if result != 'error':
+		server_files = result
 	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/import', 'label': 'Import Collection Data'}]
-	return render_template('corpus/import.html', scripts=scripts, breadcrumbs=breadcrumbs)
+	return render_template('corpus/import.html', scripts=scripts, 
+			breadcrumbs=breadcrumbs, server_files=server_files)
+
+def get_server_files():
+	""" Get the files available for import from the server."""
+	url = 'https://mirrormask.english.ucsb.edu:9999'
+	import requests
+	from bs4 import BeautifulSoup
+	# Uncomment this to process replace the dummy file names
+	# response = requests.get(url)
+	# if response.ok:
+	# 	soup = BeautifulSoup(response.text, 'html.parser')
+	# 	result = [url + node.get('href') for node in soup.find_all('a')]
+	# else:
+	# 	return 'error'
+	# return result
+	return ['myfile1.json', 'myfile2.json', 'myfile3.json', 'myzipfile1.zip']
+
+
+@corpus.route('/import-server-file', methods=['GET', 'POST'])
+def import_server_data():
+	errors = []
+	collection = request.json['collection']
+	category = request.json['category']
+	branch = request.json['branch']
+	filename = request.json['filename']
+	base_url = 'https://mirrormask.english.ucsb.edu:9999/import-queue/'
+	url = base_url + filename
+	# Construction a metapath
+	if collection == '':
+		errors.append('Please indicate the name of the collection where you want to import the data.')
+	else:
+		metapath = collection + ',' + category
+	if branch != '':
+		metapath = metapath  + ',' + branch
+	# If the user's selected filename is in the server import directory
+	if filename in get_server_files():
+		# Iterate through json files in zip archive
+		if filename.endswith('.zip'):
+			with zipfile.ZipFile(url) as z:
+				for fn in z.namelist():
+					# We're trusting that the zip archive contains
+					# only valid manifest files and no folders.
+					with z.open(fn) as f:
+						manifest = json.loads(f.read())
+					# Now we try to insert the manifest in the database
+					if corpus_db.find({'name': manifest['name'], 'metapath': metapath}).count > 0:
+						msg = 'A collection already exists containing a manifest with the name <code>' + name + '</code>.'
+						errors.append(msg)
+					else:
+						corpus_db.insert_one(manifest)
+		else:
+			# Import a single json manifest
+			try:
+				with open(url, 'r') as f:
+					manifest = json.loads(f.read())
+					# Now we try to insert the manifest in the database
+					if corpus_db.find({'name': manifest['name'], 'metapath': metapath}).count > 0:
+						msg = 'A collection already exists containing a manifest with the name <code>' + name + '</code>.'
+						errors.append(msg)
+					else:
+						pass
+						# corpus_db.insert_one(manifest)
+			except:
+				errors.append('Could not access the url.')
+	else:
+		errors.append('The filename could not be found on the server.')
+	print(errors)
+	if len(errors) > 0:
+		return json.dumps({'result': 'fail', 'errors': errors})
+	else:
+		return json.dumps({'result': 'success', 'errors': []})
 
 
 @corpus.route('/remove-file', methods=['GET', 'POST'])

@@ -36,16 +36,19 @@ td { cursor: move !important;}
 /*    width: 1em;*/
 }
 </style>
+<script>
+  var dbQuery = ''
+</script>
 <br>
     <div class="row">
         <div class="col-sm">
             <header class="major">
-                <h2>Search</h2>
+                <h2>Search Projects</h2>
             </header>
         </div>
         <div class="col-sm text-right">
             <button id="hideSearch" class="btn btn-lg btn-outline-editorial">Hide Form</button>
-            <button id="exportSearchResults" class="btn btn-lg btn-outline-editorial" style="display:none;">Export</button>
+            <button id="exportSearchResults" class="btn btn-lg btn-outline-editorial" style="display:none;">Export Results</button>
         </div>
     </div>
 <div id="search-form">
@@ -59,8 +62,7 @@ td { cursor: move !important;}
             <div id="builder"></div>
             <br>
             <button id="view-query" class="btn btn-outline-editorial">View Query</button>
-            <button id="search-query" class="btn btn-outline-editorial">Search</button>
-            <button title="Launch Jupyter notebook" id="launch-jupyter" class="btn btn-outline-editorial"><i class="fa fa-rocket"></i></button>
+            <button id="search" class="btn btn-outline-editorial">Search</button>
         </div>
     </div>
 </div>

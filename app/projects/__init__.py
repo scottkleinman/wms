@@ -1,20 +1,17 @@
 import os, tabulator, itertools, requests, json, re, zipfile, shutil
-from pathlib import Path
-import subprocess
 import yaml
+import subprocess
+from datetime import datetime
+from pathlib import Path
+from jsonschema import validate, FormatChecker
 
 # For various solutions to dealing with ObjectID, see
 # https://stackoverflow.com/questions/16586180/typeerror-objectid-is-not-json-serializable
 # If speed becomes an issue: https://github.com/mongodb-labs/python-bsonjs
-from bson import BSON
-from bson import json_util
+from bson import BSON, Binary, json_util
 JSON_UTIL = json_util.default
 
-# from datetime import datetime
 from jsonschema import validate, FormatChecker
-# from tabulator import Stream
-# import pandas as pd
-# from tableschema_pandas import Storage
 from flask import Blueprint, render_template, request, url_for, current_app, send_file
 from werkzeug.utils import secure_filename
 
@@ -29,7 +26,7 @@ corpus_db = db.Corpus
 
 projects = Blueprint('projects', __name__, template_folder='projects')
 
-from app.projects.helpers import methods as methods
+# from app.projects.helpers import methods as methods
 
 #----------------------------------------------------------------------------#
 # Constants.
@@ -38,36 +35,221 @@ from app.projects.helpers import methods as methods
 ALLOWED_EXTENSIONS = ['zip']
 
 #----------------------------------------------------------------------------#
+# Model.
+#----------------------------------------------------------------------------#
+
+class Project():
+	"""Models a project. Parameters:
+	manifest: dict containing form data for the project manifest
+	query: dict containing the database query
+	action: the database action to be taken: "insert" or "update"
+	Returns a JSON object: `{'response': 'success|fail', 'errors': []}`"""
+
+	def __init__(self, manifest, query, action):
+		"""Initialize the object."""
+		self.action = action
+		self.manifest = self.clean(manifest)
+		self.query = json.loads(query)
+		self.name = manifest['name']
+		self.filename = manifest['name'] + '.zip'
+
+	def clean(self, manifest):
+		"""Remove empty form values and form builder parameters."""
+		data = {}
+		for k, v in manifest.items():
+			if v != '' and not k.startswith('builder_'):
+				data[k] = v
+		return data
+
+	def exists(self):
+		"""Test whether the project already exists in the database."""
+		test = projects_db.find({'metapath': 'Projects', 'name': self.name})
+		if len(list(test)) > 0:
+			return True
+		else:
+			return False
+
+	def insert(self):
+		"""Insert a project in the database."""
+		try:
+			# Create the datapackage and add it to the manifest
+			content, errors = self.make_datapackage()
+			self.manifest['content'] = content
+			# Insert the manifest into the database
+			projects_db.insert_one(self.manifest)
+			return {'result': 'success', 'errors': errors}
+		except:
+			msg = """An unknown error occurred when trying to 
+			insert the project into the database."""
+			return {'result': 'fail', 'errors': [msg]}
+
+	def update(self):
+		"""Update an existing project in the database."""
+		saved_project = projects_db.find({'metapath': 'Projects', 'name': self.name})
+		# The query has not been edited, just update the metadata
+		if saved_project[0]['db-query'] == self.manifest['db-query']:
+			updated_manifest = {}
+			for k, v in self.manifest.items():
+				if k not in ['name', '_id', 'content']:
+					updated_manifest[k] = v
+			try:
+				projects_db.update_one({'name': self.name}, {
+								'$set': updated_manifest}, upsert=False)
+				return {'result': 'success', 'errors': []}
+			except pymongo.errors.PyMongoError as e:
+				print(e.__dict__.keys())
+				# print(e._OperationFailure__details)
+				msg = 'Unknown Error: The record for <code>name</code> <strong>' + \
+					self.name + '</strong> could not be updated.'
+				return {'result': 'fail', 'errors': [msg]}
+		# The query has been changed, so a new zip archive must be created
+		else:
+			content, errors = self.make_datapackage()
+			self.manifest['content'] = content
+			try:
+				projects_db.update_one({'name': self.name}, {'$set': self.manifest}, upsert=False)
+				return {'result': 'success', 'errors': []}
+			except pymongo.errors.PyMongoError as e:
+				print(e.__dict__.keys())
+				# print(e._OperationFailure__details)
+				msg = 'Unknown Error: The record for <code>name</code> <strong>' + self.name + '</strong> could not be updated.'
+				errors.append(msg)
+				return {'result': 'fail', 'errors': errors}
+
+
+	def make_datapackage(self):
+		"""Create a project folder containing a data pacakage, then
+		make a zip archive of the folder. Returns a binary of the 
+		zip archive and a list of errors."""
+		errors = []
+		# Remove empty form values and form builder parameters
+		data = {}
+		for k, v in self.manifest.items():
+			if v != '' and not k.startswith('builder_'):
+				data[k] = v
+
+		# Add the resources property -- we're making a datapackage
+		resources = []
+		for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
+			resources.append({'path': '/' + folder})
+		data['resources'] = resources
+
+		# Create the project folder and save the datapackage to it
+		temp_folder = os.path.join('app', current_app.config['TEMP_FOLDER'])
+		project_dir = os.path.join(temp_folder, self.name)
+		Path(project_dir).mkdir(parents=True, exist_ok=True)
+		# Make the standard subfolders
+		for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
+			new_folder = Path(project_dir) / folder
+			Path(new_folder).mkdir(parents=True, exist_ok=True)
+		# Write the datapackage file to the project folder
+		datapackage = os.path.join(project_dir, 'datapackage.json')
+		with open(datapackage, 'w') as f:
+			f.write(json.dumps(data, indent=2, sort_keys=False, default=JSON_UTIL))
+
+		# Query the database
+		result = list(corpus_db.find(self.query))
+		if len(result) == 0:
+			errors.append('No records were found matching your search criteria.')
+		else:
+			for item in result:
+				# Make sure every metapath is a directory
+				path = Path(project_dir) / item['metapath'].replace(',', '/')
+				Path(path).mkdir(parents=True, exist_ok=True)
+				
+				# Write a file for every manifest -- only handles json
+				if 'content' in item:
+					filename = item['name'] + '.json'
+					filepath = path / filename
+					with open(filepath, 'w') as f:
+						f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
+			# Zip the project_dir to the temp folder and send the file
+			self.zipfolder(project_dir, self.name)
+			# Read the zip file to a variable and return it
+			project_zip = os.path.join(temp_folder, self.filename)
+			with open(project_zip, 'rb') as f:
+				content = f.read()
+			return content, errors
+
+
+	def zipfolder(self, source_dir, output_filename):
+		"""Creates a zip archive of a source directory.
+
+		Takes file paths for both the source directory
+		and the output file.
+
+		Note that the output filename should not have the 
+		.zip extension; it is added here.
+		"""
+		temp_folder = os.path.join('app', current_app.config['TEMP_FOLDER'])
+		output_filepath = os.path.join(temp_folder, output_filename + '.zip')
+		zipobj = zipfile.ZipFile(output_filepath, 'w', zipfile.ZIP_DEFLATED)
+		rootlen = len(source_dir) + 1
+		for base, dirs, files in os.walk(source_dir):
+			for file in files:
+				fn = os.path.join(base, file)
+				zipobj.write(fn, fn[rootlen:])
+
+
+#----------------------------------------------------------------------------#
 # Controllers.
 #----------------------------------------------------------------------------#
 
 @projects.route('/')
 def index():
 	"""Projects index page."""
-	scripts = ['js/projects/projects.js']
-	with open("app/templates/projects/template_config.yml", 'r') as stream:
-		templates = yaml.load(stream)
+	scripts = ['js/corpus/dropzone.js', 'js/projects/projects.js', 'js/projects/upload.js']
 	return render_template('projects/index.html', scripts=scripts)
 
 
 @projects.route('/create', methods=['GET', 'POST'])
 def create():
-	"""Create manifest page."""
+	"""Create/update project page."""
 	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/projects.js', 'js/projects/search.js']
-	styles = ['css/query-builder.default.css']	
-	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/create', 'label': 'Create Project'}]
+	styles = ['css/query-builder.default.css']    
+	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/create', 'label': 'Create/Update Project'}]
 	with open('app/templates/projects/template_config.yml', 'r') as stream:
 		templates = yaml.load(stream)
 	return render_template('projects/create.html', scripts=scripts, styles=styles, templates=templates, breadcrumbs=breadcrumbs)
 
 
+@projects.route('/display/<name>', methods=['GET', 'POST'])
+def display(name):
+	"""Display project page."""
+	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/projects.js', 'js/projects/search.js']
+	styles = ['css/query-builder.default.css']    
+	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/create', 'label': 'Display Project'}]
+	errors = []
+	manifest = {}
+	with open('app/templates/projects/template_config.yml', 'r') as stream:
+		templates = yaml.load(stream)
+	try:
+		result = projects_db.find({'name': name})
+		assert result != None
+		manifest = list(result)[0]
+		del manifest['content']
+		for key, value in manifest.items():
+			if isinstance(value, list):
+				textarea = str(value)
+				textarea = dict2textarea(value)
+				manifest[key] = textarea
+			else:
+				manifest[key] = str(value)
+	except:
+		errors.append('Unknown Error: The project does not exist or could not be loaded.')
+	return render_template('projects/display.html', scripts=scripts,
+		breadcrumbs=breadcrumbs, manifest=manifest, errors=errors,
+		templates=templates, styles=styles)
+
+
 @projects.route('/test-query', methods=['GET', 'POST'])
 def test_query():
 	"""Tests whether the project query returns results 
-	from the Corpus."""
+	from the Corpus database."""
 	query = json.loads(request.json['db-query'])
 	result = corpus_db.find(query)
-	if len(list(result)) > 0:
+	num_results = len(list(result))
+	if num_results > 0:
 		response = """Your query successfully found records in the Corpus database. 
 		If you wish to view the results, please use the 
 		<a href="/corpus/search">Corpus search</a> function."""
@@ -79,167 +261,98 @@ def test_query():
 		response = 'The Corpus database is empty.'
 	return response
 
-# @projects.route('/create-manifest', methods=['GET', 'POST'])
-# def create_manifest():
-# 	""" Ajax route for creating manifests."""
-# 	manifest = {}
-# 	errors = []
-# 	data = request.json
-# 	response = {'manifest': manifest, 'errors': error_str}
-# 	return json.dumps(response)
 
-@projects.route('/display/<name>')
-def display(name):
-	""" Page for displaying Project manifests."""
-	scripts = ['js/parsley.min.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/projects/projects.js']
-	styles = []	
-	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/display', 'label': 'Display Project Manifest'}]
-	errors = []
+@projects.route('/save-project', methods=['GET', 'POST'])
+def save_project():
+	""" Handles Ajax request data and instantiates the project class.
+	Returns a dict containing a result (success or fail) and a list
+	of errors."""
+	query = request.json['query']
+	action = request.json['action'] # insert or update
+	data = request.json['manifest']
 	manifest = {}
-	try:
-		result = projects_db.find_one({'name': name})
-		assert result != None
-		for key, value in result.items():
-			if key == 'content':
-				pass
-			elif isinstance(value, list):
-				textarea = methods.dict2textarea(value)
-				manifest[key] = textarea
-			else:
-				manifest[key] = str(value)
-		print(manifest)
-		with open('app/templates/projects/template_config.yml', 'r') as stream:
-			templates = yaml.load(stream)
-	except:
-		errors.append('Unknown Error: The manifest does not exist or could not be loaded.')
-	return render_template('projects/display.html', scripts=scripts,
-		breadcrumbs=breadcrumbs, manifest=manifest, errors=errors,
-		templates=templates)
-
-
-@projects.route('/update-manifest', methods=['GET', 'POST'])
-def update_manifest():
-	""" Ajax route for updating manifests."""
-	errors = []
-	data = request.json
-	manifest = {}
+	# Get rid of empty values
 	for key, value in data.items():
 		if value != '':
 			manifest[key] = value
+	# Convert dates strings to lists
 	if 'created' in manifest.keys():
-		created = methods.flatten_datelist(methods.textarea2datelist(manifest['created']))
+		created = flatten_datelist(textarea2datelist(manifest['created']))
 		if isinstance(created, list) and len(created) == 1:
 			created = created[0]
 		manifest['created'] = created
-		print('Created')
-		print(created)
-
 	if 'updated' in manifest.keys():
-		updated = methods.flatten_datelist(methods.textarea2datelist(manifest['updated']))
+		updated = flatten_datelist(textarea2datelist(manifest['updated']))
 		if isinstance(updated, list) and len(updated) == 1:
 			updated = updated[0]
-		manifest['updated'] = created
-
+		manifest['updated'] = updated
 	# Handle other textarea strings
-	# Might be an issue here -- what are "resources". Is that in the schema?
-	list_props = ['resources', 'contributors', 'notes', 'keywords', 'licenses']
+	list_props = ['contributors', 'created', 'notes', 'keywords', 'licenses', 'updated']
 	prop_keys = {
-		'resources': { 'main_key': 'title', 'valid_props': ['title', 'path', 'email'] },
 		'contributors': { 'main_key': 'title', 'valid_props': ['title', 'email', 'path', 'role', 'group', 'organization'] },
 		'licenses': { 'main_key': 'name', 'valid_props': ['name', 'path', 'title'] },
+		'created': { 'main_key': '', 'valid_props': [] },
+		'updated': { 'main_key': '', 'valid_props': [] },
 		'notes': { 'main_key': '', 'valid_props': [] },
 		'keywords': { 'main_key': '', 'valid_props': [] }
 	}
 	for item in list_props:
 		if item in manifest and manifest[item] != '':
-			all_lines = methods.textarea2dict(item, manifest[item], prop_keys[item]['main_key'], prop_keys[item]['valid_props'])
+			all_lines = textarea2dict(item, manifest[item], prop_keys[item]['main_key'], prop_keys[item]['valid_props'])
 			if all_lines[item] != []:
 				manifest[item] = all_lines[item]
-
-	# Validate the resulting manifest
-	if methods.validate_manifest(manifest) == True:
-		# errors = ['The manifest validated.']
-		database_errors = methods.update_record(manifest)
-		errors = errors + database_errors
+	# Instantiate a project object
+	project = Project(manifest, query, action)
+	# Reject an insert where the project name already exists
+	if project.exists() and action == 'insert':
+		print('Duplicate project cannot be inserted.')
+		msg = 'This project name already exists in the database. Please choose another value for <code>name</code>.'
+		response = {'result': 'fail', 'errors': [msg]}
+	# Update the project
+	elif project.exists() and action == 'update':
+		response = project.update()
+		empty_tempfolder()
+	# Insert a new project
 	else:
-		msg = '''A valid manifest could not be created with the 
-		data supplied. Please check your entries against the 
-		<a href="/schema" target="_blank">manifest schema</a>.''' 
-		errors.append(msg)
-
-	manifest = json.dumps(manifest, indent=2, sort_keys=False)
-	if len(errors) > 0:
-		error_str = '<ul>'
-		for item in errors:
-			error_str += '<li>' + item + '</li>'
-		error_str += '</ul>'
-	else:
-		error_str = ''
-	response = {'manifest': manifest, 'errors': error_str}
+		response = project.insert()
+		empty_tempfolder()
+	# Return a success/fail flag and a list of errors to the browser
 	return json.dumps(response)
+
+
+@projects.route('/delete-project', methods=['GET', 'POST'])
+def delete_project():
+	manifest = request.json['manifest']
+	print('Deleting...')
+	result = projects_db.delete_one({'name': manifest['name'], 'metapath': 'Projects'})
+	if result.deleted_count != 0:
+		print('success')
+		return json.dumps({'result': 'success', 'errors': []})
+	else:
+		print('Unknown error: The document could not be deleted.')
+		return json.dumps({'result': 'fail', 'errors': result})
 
 
 @projects.route('/export-project', methods=['GET', 'POST'])
 def export_project():
-	""" Ajax route to process user export options and write 
-	the export files to the temp folder.
-	"""
-	errors = []
-	# Remove empty form values and form builder parameters
-	data = {}
-	for k, v in request.json['data'].items():
-		if v != '' and not k.startswith('builder_'):
-			data[k] = v
-
-	# Add the resources property 
-	resources = []
-	for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
-		resources.append({'path': '/' + folder})
-	data['resources'] = resources
-
-	# Remove the query so the data dict is a valid datapackage.
-	# This could be left in if people wanted it for the record.
-	# From display, the Ajax function does not send a db-query.
-	query = json.loads(data.pop('db-query'))
-
-	# Define a project name
-	project_name = data['name']
-	zipfilename = project_name + '.zip'
-
-	# Create the project folder and save the datapackage to it
-	temp_folder = os.path.join('app', current_app.config['TEMP_FOLDER'])
-	project_dir = os.path.join(temp_folder, project_name)
-	Path(project_dir).mkdir(parents=True, exist_ok=True)
-	# Make the standard folders
-	for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
-		new_folder = Path(project_dir) / folder
-		Path(new_folder).mkdir(parents=True, exist_ok=True)
-	# Write the datapackage
-	datapackage = os.path.join(project_dir, 'datapackage.json')
-	with open(datapackage, 'w') as f:
-		f.write(json.dumps(data, indent=2, sort_keys=False, default=JSON_UTIL))
-
-	# Query the database
-	result = list(corpus_db.find(query))
-	if len(result) == 0:
-		errors.append('No records were found matching your search criteria.')
+	""" Handles Ajax request data and instantiates the project class.
+	Returns a dict containing a result (success or fail) and a list
+	of errors."""
+	print(request.json)
+	manifest = request.json['manifest']
+	query = request.json['query']
+	action = request.json['action'] # export
+	# Instantiate a project object and make a data pacakge
+	project = Project(manifest, query, action)
+	content, errors = project.make_datapackage()
+	if len(errors) == 0:
+		response = {'result': 'success', 'errors' : []}
 	else:
-		for item in result:
-			# Make sure every metapath is a directory
-			path = Path(project_dir) / item['metapath'].replace(',', '/')
-			Path(path).mkdir(parents=True, exist_ok=True)
-			
-			# Write a file for every manifest -- only handles json
-			if 'content' in item:
-				filename = item['name'] + '.json'
-				filepath = path / filename
-				with open(filepath, 'w') as f:
-					f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
-		# Zip the project_dir to the temp folder and send the file
-		methods.zipfolder(project_dir, project_name)
+		response = {'result': 'fail', 'errors' : errors}
+		empty_tempfolder()
+	# Return a success/fail flag and a list of errors to the browser
+	return json.dumps(response)
 
-	# Return the filename so that the browser can retrieve it
-	return json.dumps({'filename': zipfilename, 'errors': errors}, default=JSON_UTIL)
 
 @projects.route('/download-export/<filename>', methods=['GET', 'POST'])
 def download_export(filename):
@@ -252,20 +365,17 @@ def download_export(filename):
 	os.remove(filepath)
 	response.headers['Content-Type'] = 'application/octet-stream'
 	response.headers["Content-Disposition"] = "attachment; filename={}".format(filename)
-	# As a precaution, empty the temp folder
-	shutil.rmtree('app/temp')
-	methods.make_dir('app/temp')
+	empty_tempfolder()
 	return response
 
-
 @projects.route('/search', methods=['GET', 'POST'])
-def search2():
-	""" Experimental Page for searching Corpus manifests."""
-	scripts = ['js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery.twbsPagination.min.js', 'js/corpus/corpus.js', 'js/jquery-sortable-min.js', 'js/corpus/search.js']
+def search():
+	""" Experimental Page for searching Projects manifests."""
+	scripts = ['js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery.twbsPagination.min.js', 'js/projects/projects.js', 'js/jquery-sortable-min.js', 'js/projects/search.js']
 	styles = ['css/query-builder.default.css']	
-	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/search', 'label': 'Search Collections'}]
+	breadcrumbs = [{'link': '/projects', 'label': 'Projects'}, {'link': '/projects/search', 'label': 'Search Projects'}]
 	if request.method == 'GET':
-		return render_template('corpus/search2.html', scripts=scripts, styles=styles, breadcrumbs=breadcrumbs)
+		return render_template('projects/search.html', scripts=scripts, styles=styles, breadcrumbs=breadcrumbs)
 	if request.method == 'POST':
 		query = request.json['query']
 		page = int(request.json['page'])
@@ -283,14 +393,14 @@ def search2():
 			else:
 				opt = (item[0], pymongo.DESCENDING)
 			sorting.append(opt)
-		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties, sorting)
+		result, num_pages, errors = search_projects(query, limit, paginated, page, show_properties, sorting)
 		if result == []:
 			errors.append('No records were found matching your search criteria.')
 		return json.dumps({'response': result, 'num_pages': num_pages, 'errors': errors}, default=JSON_UTIL)
 
 
-@projects.route('/export-search', methods=['GET', 'POST'])
-def export_search():
+@projects.route('/export-search-results', methods=['GET', 'POST'])
+def export_search_results():
 	""" Ajax route for exporting search results."""
 	if request.method == 'POST':
 		query = request.json['query']
@@ -309,217 +419,343 @@ def export_search():
 			else:
 				opt = (item[0], pymongo.DESCENDING)
 			sorting.append(opt)
-		result, num_pages, errors = methods.search_corpus(query, limit, paginated, page, show_properties, sorting)
+		result, num_pages, errors = search_projects(query, limit, paginated, page, show_properties, sorting)
 		if len(result) == 0:
 			errors.append('No records were found matching your search criteria.')
 		# Need to write the results to temp folder
 		for item in result:
-			filename = item['name'] + '.json'
-			filepath = os.path.join('app/temp', filename)
+			filename = 'search-results.zip'
+			filepath = 'app/temp/search-results.zip'
 			with open(filepath, 'w') as f:
 				f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
 		# Need to zip up multiple files
 		if len(result) > 1:
-			filename = 'search_results.zip'
-			methods.zipfolder('app/temp', 'search_results')
+			filename = 'search-results.zip'
+			zipfolder('app/temp', 'search-results')
 		return json.dumps({'filename': filename, 'errors': errors}, default=JSON_UTIL)
 
 
-@projects.route('/delete-manifest', methods=['GET', 'POST'])
-def delete_manifest():
-	""" Ajax route for deleting manifests."""
-	errors = []
-	name = request.json['name']
-	metapath = request.json['metapath']
-	msg = methods.delete_project(name, metapath)
-	if msg  != 'success':
-		errors.append(msg)
-	return json.dumps({'errors': errors})
-
-
-@projects.route('/import', methods=['GET', 'POST'])
-def import_data():
-	""" Page for importing manifests."""
-	scripts = [
-	'js/corpus/dropzone.js',
-	'js/parsley.min.js', 
-	'js/corpus/corpus.js',
-	'js/corpus/upload.js'
-	]
-	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/import', 'label': 'Import Collection Data'}]
-	return render_template('corpus/import.html', scripts=scripts, breadcrumbs=breadcrumbs)
-
-
-@projects.route('/remove-file', methods=['GET', 'POST'])
-def remove_file():
-	"""Ajax route triggered when a file is deleted from the file
-	uploads table. This function ensures that it is removed from
-	both the database and the uploads folder.
-	"""
+@projects.route('/import-project', methods=['GET', 'POST'])
+def import_project():
 	if request.method == 'POST':
-		# Delete the record (if it exists) from the database
-		collection = request.json['collection']
-		if collection.startswith(',Corpus,'):
-			collection = collection.replace(',Corpus,', '')
-		path = ',Corpus,' + collection + ',' + request.json['category'] + ','
-		if request.json['branch'] != '':
-			path = path + request.json['branch'] + ','
-		filename = request.json['filename'] 
-		name = filename.strip('.json')
-		corpus_db.delete_one({'path': path, 'name': name})
-		# Now delete the file (if it exists) in the uploads folder
-		mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
-		myfile = os.path.join(mydir, filename)
-		# The removal should only fail if there is no DB entry or file to remove.
-		# So no need to handle errors.
-		return json.dumps({'response': 'success'})
-
-
-@projects.route('/save-upload', methods=['GET', 'POST'])
-def save_upload():
-	""" Ajax route to create a manifest for each uploaded file  
-	and insert it in the database.
-	"""
-	if request.method == 'POST':
-		errors = []
-		# Handle the form data
-		exclude = ['branch', 'category', 'collection']
-		node_metadata = {}
-		for key, value in request.json.items():
-			if key not in exclude and value != '' and value != []:
-				node_metadata[key] = value
-		# Set the name and metapath
-		if request.json['collection'].startswith('Corpus,'):
-			collection = request.json['collection']
-		else:
-			collection = 'Corpus,' + request.json['collection']
-		try:
-			result = list(corpus_db.find({'metapath': 'Corpus', 'name': request.json['collection']}))
-			assert result != []
-			# Set the name and path for the new manifest
-			node_metadata = {}
-			if request.json['branch'] != '':
-				node_metadata['name'] = request.json['branch']
-				node_metadata['metapath'] = collection + ',' + request.json['category']
-			else:
-				node_metadata['name'] = request.json['category']
-				node_metadata['metapath'] = collection
-			mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
-			# Make sure files exist in the uploads folder
-			if len(os.listdir(mydir)) > 0:
-				# If the category or branch node does not exist, create it
-				"""
-				This section has the effect of forcing unique names, so it
-				will have to be changed.
-				"""
-				# parent = list(corpus_db.find({'name': node_metadata['name'], 'path': node_metadata['path']}))
-				# if len(parent) == 0:
-				# 	try:					
-				# 		corpus_db.insert_one(node_metadata)
-				# 	except:
-				# 		print('Could not create a RawData node.')
-				# Now start creating a data manifest for each file and inserting it
-				for filename in os.listdir(mydir):
-					filepath = os.path.join(mydir, filename)
-					metapath = node_metadata['metapath'] + ',' + node_metadata['name'] + ','
-					manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv2.0', 'metapath': metapath}
-					try:
-						with open(filepath, 'rb') as f:
-							doc = json.loads(f.read())
-							for key, value in doc.items():
-								if key not in ['name', 'namespace', 'metapath']:
-									manifest[key] = value
-					except:
-						errors.append('The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
-					schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/Data.json'
-					schema = json.loads(requests.get(schema_file).text)
-					try:
-						methods.validate(manifest, schema, format_checker=FormatChecker())
-						result = methods.create_record(manifest)
-						errors = errors + result
-					except:
-						print('Could not validate manifest for ' + filename)
-						errors.append('A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.')
-				# We're done. Empty the uploads folder.
-				mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
-				list(map(os.unlink, (os.path.join(mydir,f) for f in os.listdir(mydir))))
-			else:
-				print('There were no files in the uploads directory.')
-		except:
-			errors.append('The specified collection does not exist in the database. Check your entry or <a href="/corpus/create">create a collection</a> before importing data.')
-		if errors == []:			
-			response = {'response': 'Manifests created successfully.'}
-		else:
-			response = {'errors': errors}
-		return json.dumps(response)
-
-
-@projects.route('/upload', methods=['GET', 'POST'])
-def upload():
-	"""Ajax route saves each file uploaded by the import function
-	to the uploads folder.
-	"""
-	if request.method == 'POST':
-		errors = []
-		for file in request.files.getlist('file'):
-			# Accept only json files for now...
-			if file.filename.endswith('.json'):
-				try:
-					filename = secure_filename(file.filename)
-					file_to_save = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-					file_to_save = os.path.join('app', file_to_save)
-					file.save(file_to_save)
-				except:
-					errors.append('<p>Unknown Error: Could not save the file <code>' + filename + '</code>.</p>')
-			else:
-				errors.append('<p>The file <code>' + file.filename + '</code> has an invalid file type.</p>')					
-		if errors == []:			
-			response = {'response': 'file(s) saved successfully'}
-		else:
-			response = {'errors': errors}
-		return json.dumps(response)					
-
-
-@projects.route('/clear')
-def clear():
-	""" Going to this page will quickly empty the datbase.
-	Disable this for production.
-	"""
-	corpus_db.delete_many({})
-	return 'success'
-
-
-
-@projects.route('/launch-jupyter', methods=['GET', 'POST'])
-def launch_jupyter():
-	""" Experimental Page to launch a Jupyter notebook."""
-	try:
-		notebook = request.json['notebook']
-		query = request.json['data']['db-query']
-		querystring = 'result = list(corpus_db.find(' + str(query) + '))'
+		response = {}
 		manifest = {}
-		manifest_props = [
-			'name', 'metapath', 'namespace', 'title', 'contributors', 
-			'created', 'id', '_id', 'description', 'version', 
-			'shortTitle', 'label', 'notes', 'keywords', 'image', 
-			'updated', 'licenses'
-		]
-		for k, v in request.json['data'].items():
-			if k in manifest_props and v != '':
-				manifest[k] = v
-		m = str(manifest)
-		querystring = querystring.replace('"', '\\"')
-		m = 'manifest = ' + m.replace('\'', '\\"')
-		template_path = os.path.join('app', 'new_topic_browser_project.ipynb')
-		with open(template_path, 'r') as f:
-			doc = f.read()
-		doc = doc.replace('MANIFEST', m)
-		doc = doc.replace('USER_QUERY', querystring)
-		filename = manifest['name'] + '.ipynb'
-		file_path = os.path.join('app', filename)
-		with open(file_path, 'w') as f:
-			f.write(doc)
-		subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
-		return 'success'
+		errors = []
+		file = request.files['file']
+		if not file.filename.endswith('.zip'):
+			errors.append('The file must be a zip archive ending in <code>.zip</code>.')
+		try:
+			# Download the zip file and create a manifest
+			filename = secure_filename(file.filename)
+			file_to_save = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+			file_to_save = os.path.join('app', file_to_save)
+			file.save(file_to_save)
+		except:
+			errors.append('Could not save file to disk')
+		# Build the manifest from the datapackage
+		manifest = manifest_from_datapackage(file_to_save)
+		if 'error' in manifest:
+			errors.append(manifest['error'])
+		# Empty the uploads folder
+		UPLOAD_DIR = Path(os.path.join('app', current_app.config['UPLOAD_FOLDER']))
+		shutil.rmtree(UPLOAD_DIR)
+		UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+		# Attempt to insert the manifest in the database
+		try:
+			test = {'name': manifest['name'], 'metapath': 'Projects'}
+			result = projects_db.find(test)
+			assert len(list(result)) > 0
+			projects_db.insert_one(manifest)
+		except:
+			errors.append('The database already contains a project with the same name.')
+		# Create a response to send to the browser
+		if errors == []:
+			del manifest['content']
+			response = {'result': 'success', 'manifest': manifest, 'errors': errors}
+		else:
+			response = {'result': 'fail', 'manifest': manifest, 'errors': errors}
+		return json.dumps(response, indent=2, sort_keys=False, default=JSON_UTIL)
+
+
+#----------------------------------------------------------------------------#
+# Helpers.
+#----------------------------------------------------------------------------#
+
+def empty_tempfolder():
+	temp_folder = Path(os.path.join('app', current_app.config['TEMP_FOLDER']))
+	shutil.rmtree(temp_folder)
+	temp_folder.mkdir(parents=True, exist_ok=True)
+
+def search_projects(query, limit, paginated, page, show_properties, sorting):
+	"""Uses the query generated in /search and returns the search results.
+	"""
+	page_size = 10
+	errors = []
+	if len(list(projects_db.find())) > 0:
+		result = projects_db.find(
+			query,
+			limit=limit,
+			projection=show_properties)
+		if sorting != []:
+			result = result.sort(sorting)
+		result = list(result)
+		if result != []:
+			# Double the result for testing
+			# result = result + result + result + result + result
+			# result = result + result + result + result + result
+			if paginated == True:
+				pages = list(paginate(result, page_size=page_size))
+				num_pages = len(pages)
+				page = get_page(pages, page)
+				return page, num_pages, errors
+			else:
+				return result, 1, errors
+		else:
+			return [], 1, errors
+	else:
+		errors.append('The Projects database is empty.')
+		return [], 1, errors
+
+
+def get_page(pages, page):
+	"""Takes a list of paginated results form `paginate()` and 
+	returns a single page from the list.
+	"""
+	try:
+		return pages[page-1]
 	except:
-		return 'error'
+		print('The requested page does not exist.')
+
+
+def paginate(iterable, page_size):
+	"""Returns a generator with a list sliced into pages by the designated size. If 
+	the generator is converted to a list called `pages`, and individual page can 
+	be called with `pages[0]`, `pages[1]`, etc.
+	"""
+	while True:
+		i1, i2 = itertools.tee(iterable)
+		iterable, page = (itertools.islice(i1, page_size, None), 
+			list(itertools.islice(i2, page_size)))
+		if len(page) == 0:
+			break
+		yield page
+
+
+def zipfolder(source_dir, output_filename):
+	"""Creates a zip archive of a source directory.
+
+	Duplicates method in Project class.
+
+	Note that the output filename should not have the 
+	.zip extension; it is added here.
+	"""
+	temp_folder = os.path.join('app', current_app.config['TEMP_FOLDER'])
+	output_filepath = os.path.join(temp_folder, output_filename + '.zip')
+	zipobj = zipfile.ZipFile(output_filepath, 'w', zipfile.ZIP_DEFLATED)
+	rootlen = len(source_dir) + 1
+	for base, dirs, files in os.walk(source_dir):
+		for file in files:
+			fn = os.path.join(base, file)
+			zipobj.write(fn, fn[rootlen:])
+
+def manifest_from_datapackage(zipfilepath):
+	"""Generates a project manifest from a zipped datapackage. The zip file is 
+	embedded in the `content` property, so the project manifest is read for
+	insertion in the database."""
+	# Get the datapackage.json file
+	manifest = {}
+	try:
+		with zipfile.ZipFile(zipfilepath) as z:
+			# Get a list of folders beginning with 'Corpus'
+			metapath = list(set([os.path.split(x)[0] for x in z.namelist() if '/' in x and x.startswith('Corpus')]))
+			with z.open('datapackage.json') as f:
+				# Read the datapackage file
+				datapackage = json.loads(f.read())            
+		# Build a manifest from the datapackage info
+		manifest ['name'] = datapackage['name']
+		manifest ['metapath'] = 'Projects'
+		manifest['namespace'] = 'we1sv2.0'
+		manifest ['title'] = datapackage['title']
+		manifest ['contributors'] = datapackage['contributors']
+		manifest ['created'] = datapackage['created']
+		# If the datapackage has a db-query, copy it
+		if 'db-query' in datapackage.keys():
+			manifest['db-query'] = datapackage['db-query']
+		# Otherwise, get the collection path from the zip archive
+		else:
+			metapath = metapath[0].split('/')
+			collection_path = metapath[0] + ',' + metapath[1]
+			manifest['db-query'] = '{"$and":[{"metapath":{"$regex":"^' + collection_path + '"}}]}'
+		# Now handle the binary attachment
+		with open(zipfilepath, 'rb') as f:
+			content = f.read()
+		manifest['content'] = content
+	except:
+		manifest['error'] = 'The zip archive does not possess a <code>datapackage.json</code> file, or the file could not be parsed.'
+	# Return the manifest
+	return manifest
+
+
+def textarea2dict(fieldname, textarea, main_key, valid_props):
+    """Converts a textarea string to a dict containing a list of 
+	properties for each line. Multiple properties should be 
+	formatted as comma-separated key: value pairs. The key must be 
+	separated from the value by a space, and the main key should come
+	first. If ": " occurs in the value, the entire value can be put in
+	quotes. Where there is only one value, the key can be omitted, and
+	it will be supplied from main_key. A list of valid properties is
+	supplied in valid_props. If any property is invalid the function
+	returns a dict with only the error key and a list of errors.
+    """
+    import yaml
+    lines = textarea.split('\n')
+    all_lines = []
+    errors = []
+
+    for line in lines:
+    	# No options
+    	if main_key == '':
+    		all_lines.append(line.strip())
+    	# Parse options
+    	else:
+	        opts = {}
+	        # Match main_key without our without quotation marks 
+	        main = main_key + '|[\'\"]' + main_key + '[\'\"]'
+	        pattern = ', (' +'[a-z]+: ' + ')' # Assumes no camel case in the property name
+	        # There are options. Parse them.
+	        if re.search(pattern, line):
+	            line = re.sub(pattern, '\n\\1', line) # Could be improved to handle more variations
+	            opts = yaml.load(line.strip())
+	            for k, v in opts.items():
+	                if valid_props != [] and k not in valid_props:
+	                    errors.append('The ' + fieldname + ' field is incorrectly formatted or ' + k + ' is not a valid property for the field.')
+	        # There are no options, but the main_key is present
+	        elif re.search('^' + main + ': .+$', line):
+	            opts[main_key] = re.sub('^' + main + ': ', '', line.strip())
+	        # There are no options, and the main_key is omitted
+	        elif re.search(pattern, line) == None: 
+	            opts[main_key] = line.strip()
+	        all_lines.append(opts)
+    if errors == []:
+        d = {fieldname: all_lines}
+    else:
+        d = {'errors' : errors}
+    return d
+
+def dict2textarea(props):
+	"""Converts a dict to a line-delimited string suitable for
+	returning to the UI as the value of a textarea.
+	"""
+	lines = ''
+	for item in props:
+		line = ''
+		# Handle string values
+		if isinstance(item, str):
+			lines += item + '\n'
+		# Handle dicts
+		else:
+			for k, v in item.items():
+				line += k + ': ' + str(v).strip(': ') + ', '
+			lines += line.strip(', ') + '\n'
+	return lines.strip('\n')
+
+import re
+import dateutil.parser
+from datetime import datetime
+
+def testformat(s):
+    """Parses date and returns a dict with the date string, format,
+    and an error message if the date cannot be parsed.
+    """
+    error = ''
+    try:
+        d = datetime.strptime(s, '%Y-%m-%d')
+        dateformat = 'date'
+    except:
+        try:
+            d = datetime.strptime(s, '%Y-%m-%dT%H:%M:%SZ')
+            dateformat = 'datetime'
+        except:
+            dateformat = 'unknown'
+    if dateformat == 'unknown':
+        try:
+            d = dateutil.parser.parse(s)
+            # s = d.strftime("%Y-%m-%dT%H:%M:%SZ")
+            # dateformat = 'datetime'
+            s = d.strftime("%Y-%m-%d")
+            dateformat = 'date'
+        except:
+            error = 'Could not parse date "' + s + '" into a valid format.'
+    if error == '':
+        return {'text': s, 'format': dateformat}
+    else:
+        return {'text': s, 'format': 'unknown', 'error': error}
+
+
+def textarea2datelist(textarea):
+    """Converts a textarea string into a list of date dicts.
+    """
+
+    lines = textarea.replace('-\n', '- \n').split('\n')
+    all_lines = []
+    for line in lines:
+        line = line.replace(', ', ',')
+        dates = line.split(',')
+        for item in dates:
+            if re.search(' - ', item): # Check for ' -'
+                d = {'range': {'start': ''}}
+                range = item.split(' - ')
+                start = testformat(range[0])
+                end = testformat(range[1])
+                # Make sure start date precedes end date
+                try:
+                    if end['text'] == '':
+                        d['range']['start'] = start
+                    else:
+                        assert start['text'] < end['text']
+                        d['range']['start'] = start
+                        d['range']['end'] = end
+                except:
+                    d = {'error': 'The start date "' + start['text'] + '" must precede the end date "' + end['text'] + '".'}
+                else:
+                      d['range']['start'] = start
+            else:
+                d = testformat(item)
+            all_lines.append(d)
+    return all_lines
+
+
+def flatten_datelist(all_lines):
+    """Flattens the output of textarea2datelist() by removing 'text' and 'format' properties
+    and replacing their container dicts with a simple date string.
+    """
+    flattened = []
+    for line in all_lines:
+        if 'text' in line:
+            line = line['text']
+        if 'range' in line:
+            line['range']['start'] = line['range']['start']['text']
+            if 'end' in line['range'] and line['range']['end'] == '':
+                line['range']['end'] = line['range']['end']['text']
+            elif 'end' in line['range'] and line['range']['end'] != '':
+                line['range']['end'] = line['range']['end']['text']
+        flattened.append(line)
+    return flattened
+
+
+def serialize_datelist(flattened_datelist):
+    """Converts the output of flatten_datelist() to a line-delimited string suitable for
+    returning to the UI as the value of a textarea.
+    """
+    dates = []
+    for item in flattened_datelist:
+        if isinstance(item, dict) and 'error' not in item:
+            start = item['range']['start'] + ' - '
+            if 'end' in item['range']:
+                end = item['range']['end']
+                dates.append(start + end)
+            else:
+                dates.append(start)
+        else:
+            dates.append(str(item)) # error dict is cast as a string
+    return '\n'.join(dates)

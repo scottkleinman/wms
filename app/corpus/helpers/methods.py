@@ -246,6 +246,10 @@ def create_record(manifest):
 		# assert manifest['name'] not in corpus_db.distinct('name')
 		corpus_db.insert_one(manifest)
 	except:
+		"""We need to add some code here that looks for a LexisNexis
+		`doc_id` and appends a portion of it to `manifest['name']`
+		until it is unique withing the collection. Otherwise, add a
+		random number or display the error below."""
 		msg = 'The <code>name</code> <strong>' + manifest['name'] + '</strong> already exists along the metapath <code>' + manifest['metapath'] + '</code> in the database.'
 		errors.append(msg)
 	return errors

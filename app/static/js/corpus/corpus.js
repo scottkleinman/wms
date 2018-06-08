@@ -4,11 +4,11 @@
 
 function jsonifyForm(formObj) {
 	/* Handles JSON form serialisation */
-    var form = {};
+    var form = {}
     $.each(formObj.serializeArray(), function (i, field) {
-        form[field.name] = field.value || "";
-    });
-    return form;
+        form[field.name] = field.value || ""
+    })
+    return form
 }
 
 //
@@ -19,7 +19,7 @@ function createManifest(jsonform) {
 	/* Creates a new manifest
 	   Input: A JSON serialisation of the form values
 	   Returns: A copy of the manifest and an array of errors for display */
-	manifest = JSON.stringify(jsonform, null, '  ');
+	manifest = JSON.stringify(jsonform, null, '  ')
 	$.ajax({
 		method: "POST",
 		url: "/corpus/create-manifest",
@@ -27,29 +27,29 @@ function createManifest(jsonform) {
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
-		var manifest = JSON.parse(response)['manifest'];
-		var errors = JSON.parse(response)['errors'];
+		var manifest = JSON.parse(response)['manifest']
+		var errors = JSON.parse(response)['errors']
 		if (errors != '') {
-			msg = '<p>Could not save the manifest because of the following errors:</p>' + errors;
+			msg = '<p>Could not save the manifest because of the following errors:</p>' + errors
 		}
 		else {
-			msg = '<p>Saved the following manifest:</p>' + manifest;
+			msg = '<p>Saved the following manifest:</p>' + manifest
 		}
 	    bootbox.alert({
         message: msg,
         callback: function () {
-            // window.location = '/corpus';
+            // window.location = '/corpus'
         }
-	    });
+	    })
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
 	    bootbox.alert({
         message: '<p>The manifest could not be saved because of the following errors:</p>'+response,
         callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
+            ("Error: " + textStatus + ": " + errorThrown)
         }
-	    });
-	});
+	    })
+	})
 }
 
 
@@ -61,31 +61,31 @@ function deleteManifest(name, metapath) {
 		method: "POST",
 		url: "/corpus/delete-manifest",
 		data: JSON.stringify({"name": name, "metapath": metapath}),
-		contentType: 'application/json;charset=UTF-8',
+		contentType: 'application/jsoncharset=UTF-8',
 	})
 	.done(function(response) {
-		var errors = JSON.parse(response)['errors'];
+		var errors = JSON.parse(response)['errors']
 		if (errors != '') {
-			msg = '<p>Could not delete the manifest because of the following errors:</p>' + errors;
+			msg = '<p>Could not delete the manifest because of the following errors:</p>' + errors
 		}
 		else {
-			msg = '<p>The manifest for <code>' + name + '</code> was deleted.</p>';
+			msg = '<p>The manifest for <code>' + name + '</code> was deleted.</p>'
 		}
 	    bootbox.alert({
         message: msg,
         callback: function () {
-            window.location = '/corpus';
+            window.location = '/corpus'
         }
-	    });
+	    })
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
 	    bootbox.alert({
         message: '<p>The manifest could not be saved because of the following errors:</p>'+response,
         callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
+            ("Error: " + textStatus + ": " + errorThrown)
         }
-	    });
-	});
+	    })
+	})
 }
 
 
@@ -100,27 +100,27 @@ function exportSearch(data) {
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
-		response = JSON.parse(response);
+		response = JSON.parse(response)
 		if (response['errors'].length != 0) {
-			result = JSON.stringify(response['errors']);
+			result = JSON.stringify(response['errors'])
 		    bootbox.alert({
 	        message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
 	        callback: function () {
-	            ("Error: " + textStatus + ": " + errorThrown);
+	            ("Error: " + textStatus + ": " + errorThrown)
 	        }
-		    });
+		    })
 		} else {
-			window.location = '/corpus/download-export/' + response['filename'];
+			window.location = '/corpus/download-export/' + response['filename']
 		}
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
 	    bootbox.alert({
         message: '<p>Sorry, mate! You\'ve got an error!</p>',
         callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
+            ("Error: " + textStatus + ": " + errorThrown)
         }
-	    });
-	});
+	    })
+	})
 }
 
 
@@ -135,34 +135,34 @@ function searchCorpus(data) {
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
-		$('#results').empty();
-		response = JSON.parse(response);
+		$('#results').empty()
+		response = JSON.parse(response)
 		if (response['errors'].length != 0) {
-			result = response['errors'];
-			var message = '';
+			result = response['errors']
+			var message = ''
 			$.each(result, function (i, item) {
-				message += '<p>' + item + '</p>';
-			});
+				message += '<p>' + item + '</p>'
+			})
 		    bootbox.alert({
 		        message: message
-		    });
+		    })
 		} else {
-			result = response['response'];
+			result = response['response']
 			// Make the result into a string
-			var out = '';
+			var out = ''
 			$.each(result, function (i, item) {
-				var link = '/corpus/display/' + item['name'];
-				out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>';
+				var link = '/corpus/display/' + item['name']
+				out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>'
 				$.each(item, function (key, value) {
-					value = JSON.stringify(value);
+					value = JSON.stringify(value)
 					if (key == 'content' && value.length > 200) {
-						value = value.substring(0,200) + '...';
+						value = value.substring(0,200) + '...'
 					}
-			        out += '<code>'+ key +'</code>: ' + value + '<br>';
-		        });
-				out += '<hr>';
-		    });
-		    var $pagination = $('#pagination');
+			        out += '<code>'+ key +'</code>: ' + value + '<br>'
+		        })
+				out += '<hr>'
+		    })
+		    var $pagination = $('#pagination')
 		    var defaultOpts = {
 		        visiblePages: 5,
 		        initiateStartPageClick: false,
@@ -174,33 +174,33 @@ function searchCorpus(data) {
 						'properties': $('#properties').val(),
 						'page': page
 					}
-		            searchCorpus(newdata);
-		            $('#scroll').click();
+		            searchCorpus(newdata)
+		            $('#scroll').click()
 		        }
-		    };
-	        var totalPages = parseInt(response['num_pages']);
-	        var currentPage = $pagination.twbsPagination('getCurrentPage');
-	        $pagination.twbsPagination('destroy');
+		    }
+	        var totalPages = parseInt(response['num_pages'])
+	        var currentPage = $pagination.twbsPagination('getCurrentPage')
+	        $pagination.twbsPagination('destroy')
 	        $pagination.twbsPagination($.extend({}, defaultOpts, {
 	            startPage: currentPage,
 	            totalPages: totalPages
-	        }));
-			$('#results').append(out);
-			$('#hideSearch').html('Show Form');
-			$('#exportSearchResults').show();
-			$('#search-form').hide();
-	        $('#results').show();
-	        $('#pagination').show();
+	        }))
+			$('#results').append(out)
+			$('#hideSearch').html('Show Form')
+			$('#exportSearchResults').show()
+			$('#search-form').hide()
+	        $('#results').show()
+	        $('#pagination').show()
 		}
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
 	    bootbox.alert({
         message: '<p>Sorry, mate! You\'ve got an error!</p>',
         callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
+            ("Error: " + textStatus + ": " + errorThrown)
         }
-	    });
-	});
+	    })
+	})
 }
 
 
@@ -216,23 +216,23 @@ function sendExport(jsonform) {
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
-		filename = JSON.parse(response)['filename'];
-		// $('.modal-body').html(filename);
-		$('#exportModal').modal('hide');
+		filename = JSON.parse(response)['filename']
+		// $('.modal-body').html(filename)
+		$('#exportModal').modal('hide')
 	    // bootbox.alert({
 	    //     message: filename
-	    // });
-	    window.location = '/corpus/download-export/' + filename;
+	    // })
+	    window.location = '/corpus/download-export/' + filename
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
-		$('#exportModal').modal('hide');
+		$('#exportModal').modal('hide')
 	    bootbox.alert({
         message: '<p>Sorry, mate! You\'ve got an error!</p>',
         callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
+            ("Error: " + textStatus + ": " + errorThrown)
         }
-	    });
-	});
+	    })
+	})
 }
 
 
@@ -240,7 +240,7 @@ function updateManifest(jsonform, name) {
 	/* Updates the displayed manifest
 	   Input: A JSON serialisation of the form values
 	   Returns: A copy of the manifest and an array of errors for display */
-	manifest = JSON.stringify(jsonform, null, '  ');
+	manifest = JSON.stringify(jsonform, null, '  ')
 	$.ajax({
 		method: "POST",
 		url: "/corpus/update-manifest",
@@ -248,29 +248,29 @@ function updateManifest(jsonform, name) {
 		contentType: 'application/json;charset=UTF-8',
 	})
 	.done(function(response) {
-		var manifest = JSON.parse(response)['manifest'];
-		var errors = JSON.parse(response)['errors'];
+		var manifest = JSON.parse(response)['manifest']
+		var errors = JSON.parse(response)['errors']
 		if (errors != '') {
-			msg = '<p>Could not update the manifest because of the following errors:</p>' + errors;
+			msg = '<p>Could not update the manifest because of the following errors:</p>' + errors
 		}
 		else {
-			msg = '<p>Updated the following manifest:</p>' + manifest;
+			msg = '<p>Updated the following manifest:</p>' + manifest
 		}
 	    bootbox.alert({
         message: msg,
         callback: function () {
-            window.location = '/corpus';
+            window.location = '/corpus'
         }
-	    });
+	    })
 	})
 	.fail(function(jqXHR, textStatus, errorThrown) {
 	    bootbox.alert({
         message: '<p>The manifest could not be updated because of the following errors:</p>'+response,
         callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
+            ("Error: " + textStatus + ": " + errorThrown)
         }
-	    });
-	});
+	    })
+	})
 }
 
 
@@ -286,15 +286,15 @@ $(document).ready(function() {
 
 	/* Handles the Display form on the index page */
 	$('#go').click(function(e){
-		var name = $('#display').val();
-		window.location = '/corpus/display/' + name; 
-	});
+		var name = $('#display').val()
+		window.location = '/corpus/display/' + name 
+	})
 	$('#display').on('keypress',function(e){
-	 var key = (e.keyCode || e.which);
+	 var key = (e.keyCode || e.which)
 	    if(key == 13 || key == 3){
-	       $('#go').click();
+	       $('#go').click()
 	    }
-	});
+	})
 
 
 	//
@@ -303,23 +303,23 @@ $(document).ready(function() {
 
 	/* Handles the manifest preview and hide buttons */
 	$('#preview').click(function(e){
-		e.preventDefault();
-		$('form').hide();
-		$('#previewDisplay').show();
-		var jsonform =  jsonifyForm($('#manifestForm'));
-		$('#manifest').html(JSON.stringify(jsonform, null, '  '));
-	});
+		e.preventDefault()
+		$('form').hide()
+		$('#previewDisplay').show()
+		var jsonform =  jsonifyForm($('#manifestForm'))
+		$('#manifest').html(JSON.stringify(jsonform, null, '  '))
+	})
 
 	$('#hide').click(function(e){
-		e.preventDefault();
-		$('#previewDisplay').hide();
-		$('form').show();
-	});
+		e.preventDefault()
+		$('#previewDisplay').hide()
+		$('form').show()
+	})
 
 	$('#save').click(function(e){
-		e.preventDefault();
-		$('#manifestForm').submit();
-	});
+		e.preventDefault()
+		$('#manifestForm').submit()
+	})
 
 
 	//
@@ -328,35 +328,35 @@ $(document).ready(function() {
 
 	/* Handles form submission for record creation*/
 	$($('#manifestForm')).on('submit',function(e) {
-		e.preventDefault();
+		e.preventDefault()
 		if ($(this).parsley().isValid()) {
-			var jsonform = jsonifyForm($('#manifestForm'));
-		 	createManifest(jsonform);
+			var jsonform = jsonifyForm($('#manifestForm'))
+		 	createManifest(jsonform)
 		}
-	});
+	})
 
 
 	/* Handles the nodetype buttons for creating manifests */
 	$('input[name="nodetype"]').click(function(e) {
-		var val = $(this).val();
-		var setting = val.toLowerCase();
+		var val = $(this).val()
+		var setting = val.toLowerCase()
 		switch (true) {
 			case setting == 'collection' || setting == 'rawdata' || setting == 'processeddata':
-			var template = $('#' + setting + '-template').html();
-			$('#manifestCard').html(template);
-			break;
+			var template = $('#' + setting + '-template').html()
+			$('#manifestCard').html(template)
+			break
 			case setting == 'branch':
-			var template = $('#branch-template').html();
-			$('#manifestCard').html(template);
-			break;
+			var template = $('#branch-template').html()
+			$('#manifestCard').html(template)
+			break
 			default:
-			var template = $('#generic-template').html();
-			$('#manifestCard').html(template);
-			$('#name').val(val);
-			$('#title').val(val);
+			var template = $('#generic-template').html()
+			$('#manifestCard').html(template)
+			$('#name').val(val)
+			$('#title').val(val)
 		}
-		$('.nav-tabs a[href="#required"]').tab('show');
-	});
+		$('.nav-tabs a[href="#required"]').tab('show')
+	})
 
 
 	//
@@ -364,35 +364,35 @@ $(document).ready(function() {
 	//
 
 	/* Makes the global template available to scripts for the display page*/
-	var globalTemplate = $('#global-template').html();
+	var globalTemplate = $('#global-template').html()
 
 
 	/* If this is the display page, use the correct form for the 
 	   manifest's nodetype */
-	var page_url = document.URL.split('/');
+	var page_url = document.URL.split('/')
 	if (page_url[page_url.length-2] == 'display') {
-		template = $('#' + nodetype + '-template').html();
-		$('#manifestCard').html(template).append(globalTemplate);
+		template = $('#' + nodetype + '-template').html()
+		$('#manifestCard').html(template).append(globalTemplate)
 	}
 
 
 	/* Toggles the Edit/Update button and field disabled property */
 	$('#update').click(function(e){
-		e.preventDefault();
+		e.preventDefault()
 		if ($('#update').html() == 'Edit') {
 			$('form').find('input, textarea, select').each(function(){
 				if ($(this).attr('id') != 'name' && $(this).attr('id') != 'manifest-content') {
-					$(this).prop('readonly', false);
-					$(this).removeClass('disabled');
+					$(this).prop('readonly', false)
+					$(this).removeClass('disabled')
 				}
 				if ($(this).attr('id') == 'path' && nodetype == 'collection') {
-					$(this).prop('readonly', true);	
-					$(this).addClass('disabled');
+					$(this).prop('readonly', true)	
+					$(this).addClass('disabled')
 				}
-			});
-			$('#update').html('Update');
+			})
+			$('#update').html('Update')
 		} else {
-	    	var name = $('#name').val();
+	    	var name = $('#name').val()
 		    bootbox.confirm({
 		        message: 'Are you sure you wish to update the record for <code>' + name + '</code>?',
 		        buttons: {
@@ -401,24 +401,24 @@ $(document).ready(function() {
 		        },
 		        callback: function (result) {
 		        	if (result == true) {
-		        		var name = $('#name').val();
-		        		var path = $('#path').val();
-		        		var jsonform =  jsonifyForm($('#manifestForm'));
-		        		$.extend(jsonform, {'name': name});
-		        		$.extend(jsonform, {'path': path});
-		        		updateManifest(jsonform, name);
+		        		var name = $('#name').val()
+		        		var path = $('#path').val()
+		        		var jsonform =  jsonifyForm($('#manifestForm'))
+		        		$.extend(jsonform, {'name': name})
+		        		$.extend(jsonform, {'path': path})
+		        		updateManifest(jsonform, name)
 		        	}
 		        }
-		    });
+		    })
 		}
-	});
+	})
 
 
 	/* Handles the Delete button */
 	$('#delete').click(function(e){
-		e.preventDefault();
-    	var name = $('#name').val();
-    	var metapath = $('#metapath').val();
+		e.preventDefault()
+    	var name = $('#name').val()
+    	var metapath = $('#metapath').val()
 	    bootbox.confirm({
 	        message: 'Are you sure you wish to delete <code>' + name + '</code>?',
 	        buttons: {
@@ -427,49 +427,49 @@ $(document).ready(function() {
 	        },
 	        callback: function (result) {
 	        	if (result == true) {
-	        		deleteManifest(name, metapath);
+	        		deleteManifest(name, metapath)
 	        	}
 	        }
-	    });
-    });
+	    })
+    })
 
 
 	/* Handles the Export feature */
 	$('#export').click(function(e) {
-		e.preventDefault();
-	    $('#exportModal').modal();
-	});
+		e.preventDefault()
+	    $('#exportModal').modal()
+	})
 
 	/* Handles behaviour when Select All is changed */
 	$('#selectall').change(function(e) {
 		if ($(this).is(":checked")) {
-			$('.exportchoice').prop('checked', true);
-			$('#manifestonly').prop('checked', false);		
+			$('.exportchoice').prop('checked', true)
+			$('#manifestonly').prop('checked', false)		
 		} else {
-			$('.exportchoice').prop('checked', false);
+			$('.exportchoice').prop('checked', false)
 		}
-	});
+	})
 
 	/* Handles behaviour when Manifest Only is changed */
 	$('#manifestonly').change(function(e) {
 		if ($(this).is(":checked")) {
-			$('.exportchoice').prop('checked', false);
-			$('#selectall').prop('checked', false);
+			$('.exportchoice').prop('checked', false)
+			$('#selectall').prop('checked', false)
 		}
-		$(this).prop('checked', true);	
-	});
+		$(this).prop('checked', true)	
+	})
 
 	/* Serialises the export options and initiates the export */
 	$('#doExport').click(function(e) {
 		// Get an array of export options
-		var opts = {'exportoptions': []};
+		var opts = {'exportoptions': []}
 		$('.exportchoice:checked').each(function() {
-		   opts['exportoptions'].push(this.value); 
-		});
-		var jsonform = jsonifyForm($('#manifestForm'));
-		$.extend(jsonform, opts);
-		sendExport(jsonform);
-	});
+		   opts['exportoptions'].push(this.value) 
+		})
+		var jsonform = jsonifyForm($('#manifestForm'))
+		$.extend(jsonform, opts)
+		sendExport(jsonform)
+	})
 
 
 	//
@@ -478,23 +478,23 @@ $(document).ready(function() {
 
 	/* Change the metadata form in import */
 	$('#category').change(function() {
-		var selected = $(this).val().toLowerCase();
+		var selected = $(this).val().toLowerCase()
 		if (selected == 'rawdata' || selected == 'processeddata') {
-			template = $('#' + selected + '-template').html();
+			template = $('#' + selected + '-template').html()
 		} else {
-			template = $('#generic-template').html();
+			template = $('#generic-template').html()
 		}
-		$('#metadataCard').html(template).append(globalTemplate);
-	});
+		$('#metadataCard').html(template).append(globalTemplate)
+	})
 
 
 	/* Change the Show/Hide Metadata Button */
 	$('#collapseOne').on('shown.bs.collapse', function () {
-	  $('#showMetadata').text('Hide Metadata');
-	});
+	  $('#showMetadata').text('Hide Metadata')
+	})
 	$('#collapseOne').on('hidden.bs.collapse', function () {
-	  $('#showMetadata').text('Show Metadata');
-	});
+	  $('#showMetadata').text('Show Metadata')
+	})
 
 
 	//
@@ -503,7 +503,7 @@ $(document).ready(function() {
 
 	/* Handles the Search feature */
 	$('#searchCorpus').click(function(e) {
-		e.preventDefault();
+		e.preventDefault()
 		data = {
 			'query': $('#query').val(),
 			'regex': $('#regex').is(':checked'),
@@ -511,13 +511,13 @@ $(document).ready(function() {
 			'properties': $('#properties').val(),
 			'page': 1
 		}
-		searchCorpus(data);
-	});
+		searchCorpus(data)
+	})
 
 
 	// /* Handles the Search Export feature */
 	// $('#exportSearchResults').click(function(e) {
-	// 	e.preventDefault();
+	// 	e.preventDefault()
 	// 	// data = {
 	// 	// 	'query': $('#query').val(),
 	// 	// 	'regex': $('#regex').is(':checked'),
@@ -526,38 +526,38 @@ $(document).ready(function() {
 	// 	// 	'page': 1,
 	// 	// 	'paginated': false
 	// 	// }
-	// 	var querystring = JSON.stringify($('#builder').queryBuilder('getMongo'), undefined, 2);
-	// 	var advancedOptions = JSON.stringify(serialiseAdvancedOptions(), undefined, 2);	
+	// 	var querystring = JSON.stringify($('#builder').queryBuilder('getMongo'), undefined, 2)
+	// 	var advancedOptions = JSON.stringify(serialiseAdvancedOptions(), undefined, 2)	
 	// 	data = {
 	// 		'query': JSON.parse(query),
 	// 		'advancedOptions': JSON.parse(advancedOptions),
 	// 		'paginated': false
-	// 	};
-	// 	alert(JSON.stringify(data));
-	// 	exportSearch(data);
-	// });
+	// 	}
+	// 	alert(JSON.stringify(data))
+	// 	exportSearch(data)
+	// })
 
 
 	/* Toggles the search form */
 	$('#hideSearch').click(function(){
 		if ($('#hideSearch').html() == 'Hide Form') {
-			$('#search-form').hide();
-			$('#exportSearchResults').show();
-			$('#results').show();	
-			$('#pagination').show();		
-			$('#hideSearch').html('Show Form');
+			$('#search-form').hide()
+			$('#exportSearchResults').show()
+			$('#results').show()	
+			$('#pagination').show()		
+			$('#hideSearch').html('Show Form')
 		} else {
-			$('#hideSearch').html('Hide Form');
-			$('#exportSearchResults').hide();
-			$('#results').hide();
-			$('#pagination').hide();			
-			$('#search-form').show();
+			$('#hideSearch').html('Hide Form')
+			$('#exportSearchResults').hide()
+			$('#results').hide()
+			$('#pagination').hide()			
+			$('#search-form').show()
 		}
-	});
+	})
 
 	/* Handles the pagination buttons */
 	$('.page-link').click(function(e){
-		e.preventDefault();
+		e.preventDefault()
 		data = {
 			'query': $('#query').val(),
 			'regex': $('#regex').is(':checked'),
@@ -565,7 +565,44 @@ $(document).ready(function() {
 			'properties': $('#properties').val(),
 			'page': $(this).html()
 		}
-	    searchCorpus(data);
-	});
+	    searchCorpus(data)
+	})
 
-}); /* End of $(document).ready() Event Handling */
+	/* Handles server imports */
+	$('.server-import').click(function(e){
+		e.preventDefault()
+		var data = {}
+		data['collection'] = $('#collection').val()
+		data['category'] = $('#category').val()
+		data['branch'] = $('#branch').val()
+		data['filename'] = $(this).attr('data-server')
+		$.ajax({
+			method: "POST",
+			url: "/corpus/import-server-file",
+			data: JSON.stringify(data),
+			contentType: 'application/json;charset=UTF-8',
+		})
+		.done(function(response) {
+			var errors = JSON.parse(response)['errors']
+			if (errors.length > 0) {
+				msg = '<p>Could not update the manifest because of the following errors:</p><ul>'
+				$.each(errors, function (index, value) {
+					msg += '<li>' + value + '</li>'
+				})
+				msg += '</ul>'
+			} else {
+			    msg = 'The import was successful.'
+			}
+		    bootbox.alert(msg)
+		})
+		.fail(function(jqXHR, textStatus, errorThrown) {
+		    bootbox.alert({
+	        message: '<p>The manifest could not be updated because of the following errors:</p>'+response,
+	        callback: function () {
+	            ("Error: " + textStatus + ": " + errorThrown)
+	        }
+		    })
+		})
+	})
+
+}) /* End of $(document).ready() Event Handling */

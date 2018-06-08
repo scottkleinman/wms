@@ -218,6 +218,39 @@
 
     </div>
 </div>
+
+<br>
+<h4>The following files on the server are available for importing:</h4>
+<small>Files will be added to the collection, category, and branch listed above.</small>
+<!-- Server Imports -->
+<div class="card card-body">
+    <div class="table table-striped files" id="server-import-previews">
+        {% for filename in server_files %}
+        <div id="server-import-template" class="file-row">
+          <div>
+              <span class="preview">{{ filename|safe }}<img data-dz-thumbnail /></span>
+          </div>
+          <div>
+              <p class="name" data-dz-name></p>
+              <strong class="error text-danger" data-dz-errormessage></strong>
+          </div>
+          <div>
+              <p class="size" data-dz-size></p>
+              <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-bar progress-bar-success" style="width:0%;" data-dz-uploadprogress></div>
+              </div>
+          </div>
+          <div>
+            <button class="btn btn-outline-editorial server-import" data-server="{{ filename|safe }}">
+                <i class="fa fa-upload"></i>
+                <span>Import</span>
+            </button>
+          </div>
+        </div>
+        {% endfor %}  
+      </div>
+    </div>
+
 <!-- Preview -->
 <div id="previewDisplay" style="display: none;">
     <br>

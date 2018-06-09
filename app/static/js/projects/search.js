@@ -323,6 +323,7 @@ $(document).ready(function () {
   $('#builder').queryBuilder(options)
   if (dbQuery != '') {
     $('#builder').queryBuilder('setRulesFromMongo', dbQuery)
+    $('#db-query').val(JSON.stringify(dbQuery))
   }
 
   // Update the query textarea when the query builder changes
@@ -411,22 +412,22 @@ $(document).ready(function () {
   /**** Advanced Options Functions ****/
   // Make the table rows sortable
   $('.sorted_table').sortable({
-      containerSelector: 'table',
-      itemPath: '> tbody',
-      itemSelector: 'tr',
-      placeholder: '<tr class="placeholder"/>'
+    containerSelector: 'table',
+    itemPath: '> tbody',
+    itemSelector: 'tr',
+    placeholder: '<tr class="placeholder"/>'
   })
 
   // Transfer the checked value to the row element
   $('.show').change(function() {
-      var show = $(this).is(':checked')
-      $(this).parent().parent().parent().attr('data-show', show)
+    var show = $(this).is(':checked')
+    $(this).parent().parent().parent().attr('data-show', show)
   })
 
   // Transfer the sort value to the row element
   $('.direction').change(function() {
-      var direction = $(this).val()
-      $(this).parent().parent().attr('data-direction', direction)
+    var direction = $(this).val()
+    $(this).parent().parent().attr('data-direction', direction)
   })
 
   // Export Search Results Button
@@ -434,7 +435,7 @@ $(document).ready(function () {
     e.preventDefault()
     var querystring = JSON.stringify($('#builder').queryBuilder('getMongo'), undefined, 2)
     var advancedOptions = JSON.stringify(serialiseAdvancedOptions(), undefined, 2)
-    data = {
+    var data = {
       'query': JSON.parse(querystring),
       'advancedOptions': JSON.parse(advancedOptions),
       'paginated': false

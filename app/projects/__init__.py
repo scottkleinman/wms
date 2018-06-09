@@ -235,6 +235,7 @@ def display(name):
 				manifest[key] = textarea
 			else:
 				manifest[key] = str(value)
+		manifest['metapath'] = 'Projects'
 	except:
 		errors.append('Unknown Error: The project does not exist or could not be loaded.')
 	return render_template('projects/display.html', scripts=scripts,

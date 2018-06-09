@@ -478,6 +478,22 @@ def import_project():
 		return json.dumps(response, indent=2, sort_keys=False, default=JSON_UTIL)
 
 
+@projects.route('/launch-jupyter', methods=['GET', 'POST'])
+def launch_jupyter():
+	""" Experimental Page to launch a Jupyter notebook."""
+	try:
+		assert 3 > 4 # For testing
+		notebook = request.json['notebook']
+		query = request.json['data']['db-query']
+		filename = manifest['name'] + '.ipynb'
+		file_path = os.path.join('app', filename)
+		with open(file_path, 'w') as f:
+			f.write(doc)
+		subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
+		return 'success'
+	except:
+		return 'error'
+
 #----------------------------------------------------------------------------#
 # Helpers.
 #----------------------------------------------------------------------------#

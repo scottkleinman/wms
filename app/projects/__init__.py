@@ -27,6 +27,7 @@ corpus_db = db.Corpus
 projects = Blueprint('projects', __name__, template_folder='projects')
 
 # from app.projects.helpers import methods as methods
+from app.projects.helpers import workspace as workspace
 
 #----------------------------------------------------------------------------#
 # Constants.
@@ -478,21 +479,136 @@ def import_project():
 		return json.dumps(response, indent=2, sort_keys=False, default=JSON_UTIL)
 
 
+def load_saved_datapackage(manifest, zip_filepath, projects_dir, workspace_dir):
+	content = manifest.pop('content')
+	# Save the datapackage to disk
+	with open(zip_filepath, 'rb') as f:
+		f.write(content)
+	# Extract the zip archive
+	with zipfile.ZipFile(zip_filepath) as zf:
+		zf.extractall(projects_dir)
+	# Delete the datatapackage
+		os.remove(zip_filepath)
+	# Make a virtual workspace directory in the project.
+	# We may need to write workspace files to it.
+	Path(workspace_dir).mkdir(parents=True, exist_ok=True)
+
+
+def make_new_datapackage(project_dir, data):
+	# Make sure the Corpus query returns results
+	errors = []
+	try:
+		result = list(corpus_db.find(data['db_query']))
+		assert len(result) > 0
+	except:
+		errors.append('<p>Could not find any Corpus data. Please test your query.</p>')
+	if len(result) > 0:
+		try:
+			# Remove empty form values and form builder parameters
+			manifest = {}
+			for k, v in data.items():
+				if v != '' and not k.startswith('builder_'):
+					manifest[k] = v
+			# Add the resources property -- we're making a datapackage
+			resources = []
+			for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
+				resources.append({'path': '/' + folder})
+			manifest['resources'] = resources
+			# Add the standard subfolders to the project folder
+			# We may need to write files to the virtual workspace
+			for folder in ['Sources', 'Corpus', 'Processes', 'Scripts', 'Virtual_Workspace']:
+				new_folder = Path(project_dir) / folder
+				Path(new_folder).mkdir(parents=True, exist_ok=True)
+			# Write the datapackage file to the project folder
+			datapackage = os.path.join(project_dir, 'datapackage.json')
+			with open(datapackage, 'r') as f:
+				f.write(json.dumps(manifest))
+		except:
+			errors.append('<p>Could not write the datapackage to the project directory.</p>')
+		# Now write the data to the project folder
+		try:
+			for doc in result:
+				metapath = doc['metapath'].replace(',', '/')
+				path = os.path.join(metapath, doc['name'] + '.json')
+				filepath = os.path.join(project_dir, path)
+				with open(filepath, 'w') as f:
+					f.write(doc)
+		except:
+			errors.append('<p>Could not write the data to the project directory.</p>')
+	return errors
+
+
 @projects.route('/launch-jupyter', methods=['GET', 'POST'])
 def launch_jupyter():
+	""" Creates a project folder on the server containing a 
+	project datapackage, along with any workspace templates. 
+	If successful, the Jupyter notebook is lost; otherwise,
+	an error report is returned to the front end."""
+	errors = []
+	manifest = request.json['manifest']
+	projects_dir = 'https://mirrormask.english.ucsb.edu:9999/projects'
+	file_path = 'path_to_starting_notebook'
+	# Fetch or create a datapackage based on the info received
+	datapackage = workspace.Datapackage(manifest, projects_dir)
+	errors += datapackage.errors
+	# If the datapackage has no errors, create the notebook
+	if len(errors) == 0:
+		notebook = workspace.Notebook(datapackage.manifest, projects_dir)
+		errors += notebook.errors
+	# If the notebook has no errors, launch it
+		try:
+			subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
+		except:
+			errors.append('<p>Could not launch the Jupyter notebook.</p>')
+	# If the process has accumulated errors on the way, send the
+	# error messages to the front end.
+	if len(errors) > 0:
+		return json.dumps({'result': 'fail', 'errors': errors})
+	else:
+		return json.dumps({'result': 'success', 'errors': []})
+
+
+# Old Method -- not used
+@projects.route('/launch-jupyter-old', methods=['GET', 'POST'])
+def launch_jupyter_old():
 	""" Experimental Page to launch a Jupyter notebook."""
-	try:
-		assert 3 > 4 # For testing
-		notebook = request.json['notebook']
-		query = request.json['data']['db-query']
-		filename = manifest['name'] + '.ipynb'
-		file_path = os.path.join('app', filename)
-		with open(file_path, 'w') as f:
-			f.write(doc)
-		subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
-		return 'success'
-	except:
-		return 'error'
+	errors = []
+	projects_dir = "https://mirrormask.english.ucsb.edu:9999/projects"
+	project_name = request.json['data']['name']
+	project_dir = os.path.join(projects_dir, project_name)
+	workspace_dir = os.path.join(project_dir, 'Virtual_Workspace')
+	zip_filepath = project_dir + '.zip'
+	# Make project folder if it does not exist
+	if not Path(project_dir).exists():
+		Path(workspace_dir).mkdir(parents=True, exist_ok=True)
+	else:
+		errors.append('<p>A project with this name already exists on the server.</p>')
+	# Check if the project is in the database
+	result = list(projects_db.find({'name': project_name}))
+	# If the project is saved to the database
+	if len(result) > 0:
+		try:
+			load_saved_datapackage(result, zip_filepath, projects_dir, workspace_dir)
+		except:
+			errors.append('<p>There was an error saving the project datapackage to the server.</p>')
+	# Otherwise, make a new datapackage
+	else:
+		try:
+			errors = make_new_datapackage(project_dir, request.json['data'])
+		except:
+			errors.append('<p>There was an error creating the project datapackage on the server.</p>')
+	return errors
+
+# Now we need to write the notebook file and then launch it.
+# 		# Launch the notebook
+# 		filename = manifest['name'] + '.ipynb'
+# 		file_path = os.path.join('app', filename)
+# 		with open(file_path, 'w') as f:
+# 			f.write(doc)
+# 		subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
+# 		return 'success'
+# 	except:
+# 		return 'error'
 
 #----------------------------------------------------------------------------#
 # Helpers.

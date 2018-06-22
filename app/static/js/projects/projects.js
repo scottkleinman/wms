@@ -182,7 +182,7 @@ function launchJupyter (btnId, formvals) {
     'notebook': btnId,
     'data': formvals
   }
-  console.log(data)
+  console.log('Sending')
   $.ajax({
     method: 'POST',
     url: '/projects/launch-jupyter',
@@ -190,9 +190,16 @@ function launchJupyter (btnId, formvals) {
     contentType: 'application/json;charset=UTF-8'
   })
     .done(function (response) {
-      if (response === 'error') {
-        msg = '<p>Unknown Error: A Jupyter notebook could not be launched. Make sure you have a Jupyter server running.</p>'
-        msg = "<p>We're still in test mode and can't yet launch notebooks.</p>"
+      console.log('Done')
+      console.log(response)
+      response = JSON.parse(response)
+      if (response.result === 'fail') {
+        var msg = '<p>Could not launch the virtual workspace because of the following errors:</p>'
+        msg += '<ul>'
+        $.each(response.errors, function (index, value) {
+          msg += '<li>' + value + '</li>'
+        })
+        msg += '</ul>'
         bootbox.alert({
           message: msg
         })

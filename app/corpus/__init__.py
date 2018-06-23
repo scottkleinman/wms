@@ -43,7 +43,8 @@ ALLOWED_EXTENSIONS = ['xlsx']
 def index():
 	"""Corpus index page."""
 	scripts = ['js/corpus/corpus.js']
-	return render_template('corpus/index.html', scripts=scripts)
+	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}]
+	return render_template('corpus/index.html', scripts=scripts, breadcrumbs=breadcrumbs)
 
 
 @corpus.route('/create', methods=['GET', 'POST'])

@@ -200,7 +200,8 @@ class Project():
 def index():
 	"""Projects index page."""
 	scripts = ['js/corpus/dropzone.js', 'js/projects/projects.js', 'js/projects/upload.js']
-	return render_template('projects/index.html', scripts=scripts)
+	breadcrumbs = [{'link': '/corpus', 'label': 'Scripts'}]
+	return render_template('projects/index.html', scripts=scripts, breadcrumbs=breadcrumbs)
 
 
 @projects.route('/create', methods=['GET', 'POST'])

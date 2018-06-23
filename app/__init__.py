@@ -8,6 +8,7 @@ import os, json, re, urllib, markdown
 from .sources import sources
 from .corpus import corpus
 from .projects import projects
+from .scripts import scripts
 from .tasks import tasks
 
 # Import constants
@@ -26,6 +27,7 @@ app = Flask(__name__, instance_relative_config=True)
 app.register_blueprint(sources, url_prefix='/sources')
 app.register_blueprint(corpus, url_prefix='/corpus')
 app.register_blueprint(projects, url_prefix='/projects')
+app.register_blueprint(scripts, url_prefix='/scripts')
 app.register_blueprint(tasks, url_prefix='/tasks')
 
 # Configurations

@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% block main %}
 <script>
-  //var dbQuery = JSON.parse('{{ manifest["db-query"]|safe }}')
-  var dbQuery = {"$and":[{"name":"guardian-2013-h-100"}]}
+  var dbQuery = JSON.parse('{{ manifest["db-query"]|safe }}')
 </script>
 <form method="POST" id="manifestForm">
 <br>

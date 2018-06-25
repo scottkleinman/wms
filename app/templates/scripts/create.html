@@ -54,6 +54,66 @@
                 </div> 
                 {% endif %}
                 {% endfor %}
+                <div class="form-group row">
+                    <div class="col-sm-2">
+                        <label class="col-form-label" for="path">path</label>
+                        <p style="color: #3d4449; font-weight: 600">- or -</p>
+                        <label class="col-form-label" for="upload">upload</label>
+                    </div>
+                    <div class="col-sm-4">
+                        <input name="path" id="path" type="text" placeholder="Path to script or tool" class="form-control">
+                        <br>
+                        <span class="btn btn-outline-editorial fileinput-button">
+                            <i class="fa fa-plus"></i>
+                            <span>Select file...</span>
+                        </span>
+                        <br>
+                        <!-- The global file processing state -->
+                        <span class="fileupload-process">
+                            <div id="total-progress" class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <div class="progress-bar progress-bar-success" style="width:0%;" data-dz-uploadprogress></div>
+                            </div>
+                        </span>
+                    <!-- Begin Upload Template -->
+                    <div class="table table-striped files" id="previews">
+                            <div id="template" class="file-row">
+                            <!-- This is used as the file preview template -->
+                            <div>
+                                <span class="preview"><img data-dz-thumbnail /></span>
+                            </div>
+                            <div>
+                                <p class="name" data-dz-name></p>
+                                <strong class="error text-danger" data-dz-errormessage></strong>
+                            </div>
+                            <div>
+                                <p class="size" data-dz-size></p>
+                                <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                    <div class="progress-bar progress-bar-success" style="width:0%;" data-dz-uploadprogress></div>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-editorial start">
+                                    <i class="fa fa-upload"></i>
+                                    <span>Upload</span>
+                                </button>
+                                <button data-dz-remove class="btn btn-sm btn-outline-editorial cancel">
+                                    <i class="fa fa-ban"></i>
+                                    <span>Cancel</span>
+                                </button>
+                                <button data-dz-remove class="btn btn-sm btn-outline-editorial delete">
+                                <i class="fa fa-trash"></i>
+                                <span>Remove</span>
+                                </button>
+                            </div>
+                            </div>
+                        </div>
+                    <!-- End Upload Template -->
+                    </div>        
+                    <label class="col-sm-1 col-form-label" for="script">- or - </label>
+                    <div class="col-sm-5">
+                      <textarea name="script" id="script" class="form-control" placeholder="Paste script here." style="height: 200px;"></textarea>   
+                    </div>
+                </div>
             </div>
             <div class="tab-pane fade" id="optional" role="tabpanel" aria-labelledby="optional-tab">
               {% for opt in optional_opts %}

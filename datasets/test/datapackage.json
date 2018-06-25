@@ -1,0 +1,22 @@
+{
+  "name": "test",
+  "namespace": "we1sv2.0",
+  "title": "Test",
+  "contributors": "Me",
+  "created": "2018-06-02",
+  "db-query": "{\"$and\":[{\"name\":\"guardian-2013-h-100\"}]}",
+  "resources": [
+    {
+      "path": "/Sources"
+    },
+    {
+      "path": "/Corpus"
+    },
+    {
+      "path": "/Processes"
+    },
+    {
+      "path": "/Scripts"
+    }
+  ]
+}

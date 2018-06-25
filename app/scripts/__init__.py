@@ -26,7 +26,7 @@ scripts_db = db.Scripts
 scripts = Blueprint('scripts', __name__, template_folder='scripts')
 
 # from app.scripts.helpers import methods as methods
-from app.scripts.helpers import workspace as workspace
+from app.projects.helpers import workspace as workspace
 
 #----------------------------------------------------------------------------#
 # Constants.

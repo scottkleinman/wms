@@ -1,6 +1,6 @@
 # WE1S Workflow Manager
 
-This is an early-stage prototype for the WE1S WE1S Workflow Management System. It is still very buggy, but it demonstrates the major functions. It runs on port 5000 with the default `localhost:27017` for MongoDB.
+This is an early-stage prototype for the WE1S WE1S Workflow Management System. It is still very buggy, but it demonstrates the major functions. It runs on port 5000 with the default `mongodb:27017` for MongoDB.
 
 ## Requirements
 

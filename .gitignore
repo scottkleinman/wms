@@ -9,6 +9,8 @@ dist/
 downloads/
 eggs/
 .eggs/
+instance/workspace/projects
+instance/workspace/temp
 lib/
 lib64/
 parts/

@@ -52,20 +52,21 @@ function validateQuery (requiredFields) {
 //
 
 // General Save Function
-function saveProject(action) {
+function saveProject (action) {
   // Get the manifest, query, and action
-    var manifest = validateQuery([]) // Returns form vals or false 
-    if (manifest !== false) {
-      var data = {'action': action, 'query': manifest['db-query'], 'manifest': manifest}
-      data = JSON.stringify(data)
-      $.ajax({
-        method: 'POST',
-        url: '/projects/save-project',
-        data: data,
-        contentType: 'application/json;charset=UTF-8'
-      })
+  var manifest = validateQuery([]) // Returns form vals or false
+  console.log(manifest)
+  if (manifest !== false) {
+    var data = {'action': action, 'query': manifest['db-query'], 'manifest': manifest}
+    data = JSON.stringify(data)
+    $.ajax({
+      method: 'POST',
+      url: '/projects/save-project',
+      data: data,
+      contentType: 'application/json;charset=UTF-8'
+    })
       .done(function (response) {
-        if (JSON.parse(response)['result'] == 'fail') {
+        if (JSON.parse(response)['result'] === 'fail') {
           var errors = JSON.parse(response)['errors']
           var msg = '<p>Could not save the project because of the following errors:</p><ul>'
           $.each(errors, function (index, value) {
@@ -89,13 +90,13 @@ function saveProject(action) {
           }
         })
       })
-    } else {
-        bootbox.alert('Your form input could not be validated.')
-    }
+  } else {
+    bootbox.alert('Your form input could not be validated.')
+  }
 }
 
 // General Delete Function
-function deleteProject(name) {
+function deleteProject (name) {
   var manifest = jsonifyForm()
   var data = {
     'action': 'delete',
@@ -108,44 +109,45 @@ function deleteProject(name) {
     data: JSON.stringify(data),
     contentType: 'application/json;charset=UTF-8'
   })
-  .done(function (response) {
-    if (JSON.parse(response)['result'] == 'fail') {
-      var errors = JSON.parse(response)['errors']
-      var msg = '<p>Could not delete the project because of the following errors:</p><ul>'
-      $.each(errors, function (index, value) {
-        msg += '<li>' + value + '</li>'
-      })
-      msg += '</ul>'
-    } else {
-      bootbox.alert('<p>The project was deleted.</p>')
-    }
-  })
-  .fail(function (jqXHR, textStatus, errorThrown) {
-    bootbox.alert({
-      message: '<p>The project could not be updated because of the following errors:</p>'+response,
-      callback: function () {
-        return 'Error: ' + textStatus + ': ' + errorThrown
+    .done(function (response) {
+      if (JSON.parse(response)['result'] === 'fail') {
+        var errors = JSON.parse(response)['errors']
+        var msg = '<p>Could not delete the project because of the following errors:</p><ul>'
+        $.each(errors, function (index, value) {
+          msg += '<li>' + value + '</li>'
+        })
+        msg += '</ul>'
+        bootbox.alert(msg)
+      } else {
+        bootbox.alert('<p>The project was deleted.</p>')
+        alert('Go home')
       }
     })
-  })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      bootbox.alert({
+        message: '<p>The project could not be deleted because of the following errors:</p>'+response,
+        callback: function () {
+          return 'Error: ' + textStatus + ': ' + errorThrown
+        }
+      })
+    })
 }
 
-
 // General Export Function
-function exportProject() {
+function exportProject () {
   // Get the manifest, query, and action
-    var manifest = validateQuery(['name']) // Returns form vals or false
-    if (manifest !== false) {
-      var data = {'action': 'export', 'query': manifest['db-query'], 'manifest': manifest}
-      data = JSON.stringify(data)
-      $.ajax({
-        method: 'POST',
-        url: '/projects/export-project',
-        data: data,
-        contentType: 'application/json;charset=UTF-8'
-      })
+  var manifest = validateQuery(['name']) // Returns form vals or false
+  if (manifest !== false) {
+    var data = {'action': 'export', 'query': manifest['db-query'], 'manifest': manifest}
+    data = JSON.stringify(data)
+    $.ajax({
+      method: 'POST',
+      url: '/projects/export-project',
+      data: data,
+      contentType: 'application/json;charset=UTF-8'
+    })
       .done(function (response) {
-        if (JSON.parse(response)['result'] == 'fail') {
+        if (JSON.parse(response)['result'] === 'fail') {
           var errors = JSON.parse(response)['errors']
           var msg = '<p>Could not save the project because of the following errors:</p><ul>'
           $.each(errors, function (index, value) {
@@ -153,7 +155,8 @@ function exportProject() {
           })
           msg += '</ul>'
         } else {
-          window.location = '/projects/download-export/' + manifest['name'] + '.zip'
+          var downloadPath = JSON.parse(response)['key'] + '#' + manifest['name'] + '.zip'
+          window.location = '/projects/download-export/' + downloadPath
         }
         bootbox.alert({
           message: msg
@@ -167,9 +170,9 @@ function exportProject() {
           }
         })
       })
-    } else {
-        bootbox.alert('Your form input could not be validated.')
-    }
+  } else {
+    bootbox.alert('Your form input could not be validated.')
+  }
 }
 
 // Launch Jupyter Function
@@ -180,7 +183,7 @@ function launchJupyter (btnId, formvals) {
   */
   var data = {
     'notebook': btnId,
-    'data': formvals
+    'manifest': formvals
   }
   console.log('Sending')
   $.ajax({
@@ -222,16 +225,16 @@ function launchJupyter (btnId, formvals) {
 $(document).ready(function () {
 
   // Handle the Display form on the index page
-  $('#go').click(function(e){
-    var name = $('#display').val();
-    window.location = '/projects/display/' + name; 
-  });
-  $('#display').on('keypress',function(e){
-   var key = (e.keyCode || e.which);
-      if(key == 13 || key == 3){
-         $('#go').click();
-      }
-  });
+  $('#go').click(function (e) {
+    var name = $('#display').val()
+    window.location = '/projects/display/' + name
+  })
+  $('#display').on('keypress',function (e) {
+    var key = (e.keyCode || e.which)
+    if (key === 13 || key === 3){
+      $('#go').click()
+    }
+  })
 
   // Preview Show and Hide Buttons
   $('#preview').click(function (e) {
@@ -250,6 +253,8 @@ $(document).ready(function () {
   // Save Button
   $('#save').click(function (e) {
     e.preventDefault()
+    var outputQueryString = JSON.stringify($('#builder').queryBuilder('getMongo'))
+    $('#db-query').val(outputQueryString)
     saveProject($(this).attr('data-action'))
   })
 
@@ -290,5 +295,4 @@ $(document).ready(function () {
       launchJupyter(btnId, formvals)
     }
   })
-
 }) /* End $(document).ready() */

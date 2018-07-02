@@ -3,7 +3,7 @@
 //
 
 // Serialise the data
-function serialiseAdvancedOptions() {
+function serialiseAdvancedOptions () {
   // Declare an options object and helper variables
   var options = {'show_properties': [], 'sort': [], 'limit': 0}
   var rows = []
@@ -13,25 +13,25 @@ function serialiseAdvancedOptions() {
   // Get the limit value and make sure it's a number
   var limit = parseInt($('#limit').val())
   if (isNaN(limit)) {
-      limit = 0
+    limit = 0
   }
 
   // Gather data on all shown rows
-  $.each($('tbody > tr'), function() {
-      var show = $(this).attr('data-show')
-      if (show == 'true') {
-          var id = $(this).attr('data-id')
-          var name = $(this).attr('data-name')
-          var direction = $(this).attr('data-direction')
-          // Append to the list of shown properties
-          props.push(name)
-          // Append name and direction to the list of sort criteria
-          // Use an array that can be converted to a tuple
-          if (direction != 'none') {
-              tuplish = [name, direction]
-              sortList.push(tuplish)                        
-          }
+  $.each($('tbody > tr'), function () {
+    var show = $(this).attr('data-show')
+    if (show === 'true') {
+      var id = $(this).attr('data-id')
+      var name = $(this).attr('data-name')
+      var direction = $(this).attr('data-direction')
+      // Append to the list of shown properties
+      props.push(name)
+      // Append name and direction to the list of sort criteria
+      // Use an array that can be converted to a tuple
+      if (direction !== 'none') {
+        var tuplish = [name, direction]
+        sortList.push(tuplish)                      
       }
+    }
   })
 
   // Update the options object
@@ -42,126 +42,125 @@ function serialiseAdvancedOptions() {
   return options
 }
 
-function sendQuery(query, advancedOptions, page = 1) {
+function sendQuery (query, advancedOptions, page = 1) {
 /* Searches the Corpus
    Input: Values from the search form
    Returns: An array containing results and errors for display
    */
-  data = {
+  var data = {
     'query': JSON.parse(query),
     'page': page,
     'advancedOptions': JSON.parse(advancedOptions)
   }
   $.ajax({
-    method: "POST",
-    url: "/projects/search",
+    method: 'POST',
+    url: '/projects/search',
     data: JSON.stringify(data),
     contentType: 'application/json;charset=UTF-8',
   })
-  .done(function(response) {
-    $('#results').empty()
-    response = JSON.parse(response)
-    if (response['errors'].length != 0) {
-      result = response['errors']
-      var message = ''
-      $.each(result, function (i, item) {
-        message += '<p>' + item + '</p>'
-      })
-      bootbox.alert({
-        message: message
-      })
-    } else {
-      result = response['response']
-      // Make the result into a string
-      var out = ''
-      $.each(result, function (i, item) {
-        out += '<div id="result-' + item['name'] + '">'
-        var link = '/projects/display/' + item['name']
-        var id = 'delete-' + item['name']
-        out += '<div style="margin-bottom:8px;"><h4 style="display: inline">' + item['name'] + '</h4> '
-        out += '<a role="button" href="' + link + '" id="edit" class="btn btn-sm btn-outline-editorial" title="Edit Project" data-action="edit"><i class="fa fa-pencil"></i></a> '
-        out += '<a role="button" id="' + id + '" class="btn btn-sm btn-outline-editorial delete-btn" title="Delete Project" data-action="delete"><i class="fa fa-trash"></i></a>'
-        out += '</div>'
-        $.each(item, function (key, value) {
-          value = JSON.stringify(value)
-          out += '<code>'+ key +'</code>: ' + value + '<br>'
+    .done(function (response) {
+      $('#results').empty()
+      response = JSON.parse(response)
+      if (response['errors'].length !== 0) {
+        var result = response['errors']
+        var message = ''
+        $.each(result, function (i, item) {
+          message += '<p>' + item + '</p>'
         })
-        out += '<hr></div>'
-      })
-      var $pagination = $('#pagination')
-      // Get the limit value and make sure it's a number
-      var limit = parseInt($('#limit').val())
-      if (isNaN(limit)) {
-        limit = 0
-      }
-      var defaultOpts = {
-        visiblePages: 5,
-        initiateStartPageClick: false,
-        onPageClick: function (event, page) {
-          sendQuery(query, advancedOptions, page)
-            $('#scroll').click()
+        bootbox.alert({
+          message: message
+        })
+      } else {
+        result = response['response']
+        // Make the result into a string
+        var out = ''
+        $.each(result, function (i, item) {
+          out += '<div id="result-' + item['name'] + '">'
+          var link = '/projects/display/' + item['name']
+          var id = 'delete-' + item['name']
+          out += '<div style="margin-bottom:8px;"><h4 style="display: inline">' + item['name'] + '</h4> '
+          out += '<a role="button" href="' + link + '" id="edit" class="btn btn-sm btn-outline-editorial" title="Edit Project" data-action="edit"><i class="fa fa-pencil"></i></a> '
+          out += '<a role="button" id="' + id + '" class="btn btn-sm btn-outline-editorial delete-btn" title="Delete Project" data-action="delete"><i class="fa fa-trash"></i></a>'
+          out += '</div>'
+          $.each(item, function (key, value) {
+            value = JSON.stringify(value)
+            out += '<code>' + key + '</code>: ' + value + '<br>'
+          })
+          out += '<hr></div>'
+        })
+        var $pagination = $('#pagination')
+        // Get the limit value and make sure it's a number
+        var limit = parseInt($('#limit').val())
+        if (isNaN(limit)) {
+          limit = 0
         }
-      }
-      var totalPages = parseInt(response['num_pages'])
-      var currentPage = $pagination.twbsPagination('getCurrentPage')
-      $pagination.twbsPagination('destroy')
-      $pagination.twbsPagination($.extend({}, defaultOpts, {
+        var defaultOpts = {
+          visiblePages: 5,
+          initiateStartPageClick: false,
+          onPageClick: function (event, page) {
+            sendQuery(query, advancedOptions, page)
+            $('#scroll').click()
+          }
+        }
+        var totalPages = parseInt(response['num_pages'])
+        var currentPage = $pagination.twbsPagination('getCurrentPage')
+        $pagination.twbsPagination('destroy')
+        $pagination.twbsPagination($.extend({}, defaultOpts, {
           startPage: currentPage,
           totalPages: totalPages
-      }))
-      $('#results').append(out)
-      $('#hideSearch').html('Show Form')
-      $('#exportSearchResults').show()
-      $('#search-form').hide()
-      $('#results').show()
-      $('#pagination').show()
-    }
-  })
-  .fail(function(jqXHR, textStatus, errorThrown) {
-    bootbox.alert({
-      message: '<p>Sorry, mate! You\'ve got an error!</p>',
-      callback: function () {
-          ("Error: " + textStatus + ": " + errorThrown)
+        }))
+        $('#results').append(out)
+        $('#hideSearch').html('Show Form')
+        $('#exportSearchResults').show()
+        $('#search-form').hide()
+        $('#results').show()
+        $('#pagination').show()
       }
     })
-  })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      bootbox.alert({
+        message: '<p>Sorry, mate! You\'ve got an error!</p>',
+        callback: function () {
+          ('Error: ' + textStatus + ': ' + errorThrown)
+        }
+      })
+    })
 }
 
 // Export Search Results Function
-function exportSearchResults(data) {
+function exportSearchResults (data) {
   /* Exports the results of a search of the Projects database.
      Input: Values from the search form
      Returns: An array containing results and errors for display */
   $.ajax({
-      method: "POST",
-      url: "/projects/export-search-results",
-      data: JSON.stringify(data),
-      contentType: 'application/json;charset=UTF-8',
+    method: 'POST',
+    url: '/projects/export-search-results',
+    data: JSON.stringify(data),
+    contentType: 'application/json;charset=UTF-8',
   })
-  .done(function(response) {
-    response = JSON.parse(response)
-    if (response['errors'].length != 0) {
-      result = JSON.stringify(response['errors'])
-      bootbox.alert({
-        message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
-        callback: function () {
-          ("Error: " + textStatus + ": " + errorThrown)
-        }
-      })
-    } else {
+    .done(function (response) {
+      response = JSON.parse(response)
+      if (response['errors'].length !== 0) {
+        var result = JSON.stringify(response['errors'])
+        bootbox.alert({
+          message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
+          callback: function () {
+            ('Error: ' + textStatus + ': ' + errorThrown)
+          }
+        })
+      } else {
         window.location = '/projects/download-export/search-results.zip'
-    }
-  })
-  .fail(function(jqXHR, textStatus, errorThrown) {
-    bootbox.alert({
-      message: '<p>Sorry, mate! You\'ve got an error!</p>',
-      callback: function () {
-        ("Error: " + textStatus + ": " + errorThrown)
       }
     })
-  })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      bootbox.alert({
+        message: '<p>Sorry, mate! You\'ve got an error!</p>',
+        callback: function () {
+          ('Error: ' + textStatus + ': ' + errorThrown)
+        }
+      })
+    })
 }
-
 
 //
 // $(document).ready()
@@ -321,7 +320,7 @@ $(document).ready(function () {
 
   // Instantiate the Query Builder
   $('#builder').queryBuilder(options)
-  if (dbQuery != '') {
+  if (dbQuery !== '') {
     $('#builder').queryBuilder('setRulesFromMongo', dbQuery)
     $('#db-query').val(JSON.stringify(dbQuery))
   }
@@ -359,7 +358,7 @@ $(document).ready(function () {
   })
 
   // When the Get Query button is clicked, validate and create a querystring
-  $('#view-query, #search').click(function(){
+  $('#view-query, #search').click(function () {
     // Remove previous error messages
     $('.has-error').find('.rule-actions > .error-message').remove()
     // If the form validates, build the querystring
@@ -372,7 +371,7 @@ $(document).ready(function () {
       if ($(this).attr('id') == 'search') {
         sendQuery(querystring, advancedOptions)
       } else {
-        msg = '<p>Query:</p><pre><code>' + outputQueryString + '</code></pre>'
+        var msg = '<p>Query:</p><pre><code>' + outputQueryString + '</code></pre>'
         msg += '<p>Advanced Options:</p><pre><code>' + outputAdvancedOptions + '</code></pre>'
         bootbox.alert({
           message: msg
@@ -387,7 +386,7 @@ $(document).ready(function () {
   })
 
   // Handle the Serialise Button
-  $('#serialise').click(function() {
+  $('#serialise').click(function () {
     options = serialiseAdvancedOptions()
     // Display All Options
     console.log(JSON.stringify(options, null, 2))
@@ -395,7 +394,7 @@ $(document).ready(function () {
   })
 
   // Toggles Show/Hide Form Button
-  $('#hideSearch').click(function() {
+  $('#hideSearch').click(function () {
     if ($('#hideSearch').html() == 'Hide Form') {
       $('#search-form').hide()
       $('#results').show()
@@ -409,7 +408,8 @@ $(document).ready(function () {
     }
   })
 
-  /**** Advanced Options Functions ****/
+  /* Advanced Options Functions */
+
   // Make the table rows sortable
   $('.sorted_table').sortable({
     containerSelector: 'table',
@@ -419,19 +419,19 @@ $(document).ready(function () {
   })
 
   // Transfer the checked value to the row element
-  $('.show').change(function() {
+  $('.show').change(function () {
     var show = $(this).is(':checked')
     $(this).parent().parent().parent().attr('data-show', show)
   })
 
   // Transfer the sort value to the row element
-  $('.direction').change(function() {
+  $('.direction').change(function () {
     var direction = $(this).val()
     $(this).parent().parent().attr('data-direction', direction)
   })
 
   // Export Search Results Button
-  $('#exportSearchResults').click(function(e) {
+  $('#exportSearchResults').click(function (e) {
     e.preventDefault()
     var querystring = JSON.stringify($('#builder').queryBuilder('getMongo'), undefined, 2)
     var advancedOptions = JSON.stringify(serialiseAdvancedOptions(), undefined, 2)
@@ -444,7 +444,7 @@ $(document).ready(function () {
   })
 
   // Search Results Delete Button
-  $(document).on('click', '.delete-btn', function(e) {
+  $(document).on('click', '.delete-btn', function (e) {
     e.preventDefault()
     var id = $(this).attr('id')
     var name = id.replace(/^delete-/, '')
@@ -467,32 +467,30 @@ $(document).ready(function () {
             data: JSON.stringify(data),
             contentType: 'application/json;charset=UTF-8'
           })
-          .done(function (response) {
-            if (JSON.parse(response)['result'] == 'fail') {
-              var errors = JSON.parse(response)['errors']
-              var msg = '<p>Could not delete the project because of the following errors:</p><ul>'
-              $.each(errors, function (index, value) {
-                msg += '<li>' + value + '</li>'
-              })
-              msg += '</ul>'
-            } else {
-              bootbox.alert('<p>The project was deleted.</p>')
-              $('#result-'+name).remove()
-            }
-          })
-          .fail(function (jqXHR, textStatus, errorThrown) {
-            bootbox.alert({
-              message: '<p>The project could not be updated because of the following errors:</p>'+response,
-              callback: function () {
-                return 'Error: ' + textStatus + ': ' + errorThrown
+            .done(function (response) {
+              if (JSON.parse(response)['result'] == 'fail') {
+                var errors = JSON.parse(response)['errors']
+                var msg = '<p>Could not delete the project because of the following errors:</p><ul>'
+                $.each(errors, function (index, value) {
+                  msg += '<li>' + value + '</li>'
+                })
+                msg += '</ul>'
+                bootbox.alert(msg)
+              } else {
+                bootbox.alert('<p>The project was deleted.</p>')
+                $('#result-' + name).remove()
               }
             })
-          })
+            .fail(function (jqXHR, textStatus, errorThrown) {
+              bootbox.alert({
+                message: '<p>The project could not be updated because of the following errors:</p>'+response,
+                callback: function () {
+                  return 'Error: ' + textStatus + ': ' + errorThrown
+                }
+              })
+            })
         }
       }
     })
   })
-
-
 })
-

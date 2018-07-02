@@ -3,6 +3,7 @@
 <script>
   var dbQuery = JSON.parse('{{ manifest["db-query"]|safe }}')
 </script>
+{% if errors == [] %}
 <form method="POST" id="manifestForm">
 <br>
 <div class="row">
@@ -10,7 +11,7 @@
         <header class="major">
             <h2>Display Project</h2>
         </header>
-    </div>    
+    </div>
     <div class="col-sm text-right">
             <div class="btn-group">
                 <button type="button" id="preview" class="btn btn-lg btn-outline-editorial" title="Preview"><i class="fa fa-search"></i></button>
@@ -102,6 +103,22 @@
     </div> <!-- /manifestCard -->
 </div>
 </form>
+{% else %}
+<br>
+<div class="row">
+    <div class="col-sm">
+        <header class="major">
+            <h2>Display Project</h2>
+        </header>
+    </div>
+</div>
+<div class="row">
+  {% for error in errors %}
+  <p>{{error|safe}}</p>
+  {% endfor %}
+</div>
+{% endif %}  
+    
 <!-- Preview -->
 <div id="previewDisplay" style="display: none;">
     <br>

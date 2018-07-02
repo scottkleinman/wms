@@ -1,6 +1,6 @@
 import os, requests, json, re, zipfile, shutil
 import subprocess
-import datetime
+from datetime import datetime
 from pathlib import Path
 from bs4 import BeautifulSoup
 from bson import BSON, Binary, json_util
@@ -12,34 +12,138 @@ db = client.we1s
 projects_db = db.Projects
 corpus_db = db.Corpus
 
+def clean(manifest):
+	"""Remove empty form values and form builder parameters."""
+	data = {}
+	for k, v in manifest.items():
+		if v != '' and not k.startswith('builder_'):
+			data[k] = v
+	return data
+
+
+def make_project_folder(project_dir, workspace_dir):
+	"""Make project folder if it does not exist."""
+	if not os.path.isdir(project_dir):
+		workspace_path = Path(project_dir) / workspace_dir
+		Path(workspace_path).mkdir(parents=True, exist_ok=True)
+		return []
+	else:
+		return ['<p>A project with this name already exists on the server.</p>']
+
+def project_exists(name, location, WORKSPACE_PROJECTS):
+		"""Check if the project is in the database 
+		or on the server if a url to a datapackage.json
+		file is supplied.
+		"""
+		if location == 'database':
+			result = list(projects_db.find({'name': name}))
+			if len(result) > 0:
+				return True
+			else:
+				return False
+		else:
+			dirlist = [item for item in os.listdir(WORKSPACE_PROJECTS) if os.path.isdir(os.path.join(WORKSPACE_PROJECTS, item))]
+			if name not in dirlist:
+				return True
+			else:
+				return False
+
+		
+def fetch_datapackage(manifest, zip_path, project_dir, workspace_projects, workspace_dir):
+	"""Fetch a project datapackage from the database."""
+	# Get the manifest with content from the database
+	manifest = list(projects_db.find({'name': manifest['name']}))
+	content = manifest[0].pop('content')
+	try:
+		# Save the datapackage to disk
+		with open(zip_path, 'wb') as f:
+			f.write(content)
+		# Extract the zip archive
+		with zipfile.ZipFile(zip_path) as zf:
+			zf.extractall(workspace_projects)
+		# Delete the datatapackage
+		Path(zip_path).unlink()
+			# os.remove(zip_path)
+		# Make a virtual workspace directory in the project.
+		Path(workspace_dir).mkdir(parents=True, exist_ok=True)
+		return []
+	except:
+		shutil.rmtree(project_dir)
+		return ['<p>Could not extract the project datapackage.</p>']
+
+
+def validate_corpus_query(query):
+	"""Make sure the Corpus query returns results."""
+	result = list(corpus_db.find(query))
+	if len(result) > 0:
+		return True
+	else:
+		return False
+
+
+def make_datapackage(manifest, project_dir, query):
+	"""Create a new datapackage from a Corpus query."""
+	errors = []
+	try:
+		datapackage_file = os.path.join(project_dir, 'datapackage.json')
+		# Add the resources property and write the subfolders
+		# We may need to write files to the virtual workspace
+		resources = []
+		for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
+			resources.append({'path': '/' + folder})
+			new_folder = Path(project_dir) / folder
+			Path(new_folder).mkdir(parents=True, exist_ok=True)
+		manifest['resources'] = resources + [{'path': '/Workspace'}]
+		# Write the datapackage file to the project folder
+		with open(datapackage_file, 'w') as f:
+			f.write(json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL))
+	except:
+		errors.append('<p>Could not build the project file structure.</p>')
+	# Now write the data to the project folder
+	try:
+		result = list(corpus_db.find(json.loads(query)))
+		for doc in result:
+			metapath = doc['metapath'].replace(',', '/')
+			new_metapath = Path(project_dir) / metapath
+			Path(new_metapath).mkdir(parents=True, exist_ok=True)
+			filepath = os.path.join(new_metapath, doc['name'] + '.json')
+			with open(filepath, 'w') as f:
+				f.write(json.dumps(doc, indent=2, sort_keys=False, default=JSON_UTIL))
+	except:
+		errors.append('<p>Could not write the data to the project directory.</p>')
+	return errors
+
+
 class Datapackage():
 	"""Models a project datapackage object."""
 
-	def __init__(self, manifest, projects_dir):
-			
+	def __init__(self, manifest, WORKSPACE_PROJECTS):
+		container_prefix =datetime.now().strftime('%Y%m%d_%H%M_')
+
 		"""Initialize the object."""
-		self.projects_dir = projects_dir
+		self.workspace_projects = WORKSPACE_PROJECTS
 		self.errors = []
 		self.manifest = clean(manifest)
-		self.query = manifest['db_query']
+		self.query = manifest['db-query']
 		self.name = manifest['name']
-		self.project_dir = os.path.join(self.projects_dir, self.name)
-		self.workspace_dir = os.path.join(self.project_dir, 'Virtual_Workspace')
+		self.container = os.path.join(self.workspace_projects, container_prefix + self.name)
+		self.project_dir = os.path.join(self.container, self.name)
+		self.workspace_dir = os.path.join(self.project_dir, 'Workspace')
 		self.zip_name = self.name + '.zip'
-		self.zip_path = self.project_dir + '.zip'
+		self.zip_path = self.container + '.zip'
 		if 'content' in manifest:
 			self.content = manifest['content']
 		else:
 			self.content = ''
 
 		# 1. Make the project folder
-		result = make_project_folder(self.project_dir, 'Virtual_Workspace')
+		result = make_project_folder(self.project_dir, self.workspace_dir)
 		self.errors += result
 
 		# 2. Check whether the project already exists
-		if project_exists(self.name, 'database'):
+		if project_exists(self.name, 'database', WORKSPACE_PROJECTS):
 			# Get the project from the database
-			result = fetch_datapackage(self.manifest, self.zip_path, self.projects_dir, self.workspace_dir)
+			result = fetch_datapackage(self.manifest, self.zip_path, self.project_dir, self.workspace_projects, self.workspace_dir)
 			self.errors += result
 			"""In case we need to write files to the workspace folder.
 			This probably could be moved to fetch_datapackage().
@@ -48,130 +152,50 @@ class Datapackage():
 			# 	populate_workspace(self.projects_dir, self.workspace_dir)
 		else:
 			# Otherwise, make a datapackage
-			if validate_corpus_query(self.manifest['db_query']):
-				result = make_datapackage(self.manifest, self.project_dir, self.manifest['db_query'])
+			if validate_corpus_query(json.loads(self.manifest['db-query'])):
+				result = make_datapackage(self.manifest, self.project_dir, self.manifest['db-query'])
+				# If there are any errors, delete the container folder
+				if len(result) > 0:
+					shutil.rmtree(self.container)
 				self.errors += result
 			else:
 				self.errors.append('<p>Could not find any Corpus data. Please test your query.</p>')
 
 
-		# Internal methods
-		def clean(manifest):
-			"""Remove empty form values and form builder parameters."""
-			data = {}
-			for k, v in manifest.items():
-				if v != '' and not k.startswith('builder_'):
-					data[k] = v
-			return data
-
-		def make_project_folder(project_dir, workspace_dir):
-			"""Make project folder if it does not exist."""
-			r = requests.get(project_dir + '/datapackagage.json')
-			if r.status_code == requests.codes.ok:
-				workspace_path = Path(project_dir) / workspace_dir
-				Path(workspace_path).mkdir(parents=True, exist_ok=True)
-				return []
-			else:
-				return ['<p>A project with this name already exists on the server.</p>']
-
-
-		def project_exists(name, location):
-			"""Check if the project is in the database 
-			or on the server if a url to a datapackage.json
-			file is supplied.
-			"""
-			if location == 'database':
-				result = list(projects_db.find({'name': name}))
-				if len(result) > 0:
-					return True
-				else:
-					return False
-			else:
-				r = requests.get(location)
-				return r.status_code == requests.codes.ok
- 
-			
-		def fetch_datapackage(manifest, zip_path, projects_dir, workspace_dir):
-			"""Fetch a project datapackage from the database."""
-			try:
-				content = manifest.pop('content')
-				# Save the datapackage to disk
-				with open(zip_path, 'rb') as f:
-					f.write(content)
-				# Extract the zip archive
-				with zipfile.ZipFile(zip_path) as zf:
-					zf.extractall(projects_dir)
-				# Delete the datatapackage
-					os.remove(zip_path)
-				# Make a virtual workspace directory in the project.
-				Path(workspace_dir).mkdir(parents=True, exist_ok=True)
-				return []
-			except:
-				return ['<p>Could not extract the project datapackage.</p>']
-
-
-		def validate_corpus_query(query):
-			"""Make sure the Corpus query returns results."""
-			result = list(corpus_db.find(query))
-			if len(result) > 0:
-				return True
-			else:
-				return False
-
-
-		def make_datapackage(manifest, project_dir, query):
-			"""Create a new datapackage from a Corpus query."""
-			errors = []
-			try:
-				datapackage_file = os.path.join(project_dir, 'datapackage.json')
-				# Add the resources property and write the subfolders
-				# We may need to write files to the virtual workspace
-				resources = []
-				for folder in ['Sources', 'Corpus', 'Processes', 'Scripts', 'Virtual_Workspace']:
-					resources.append({'path': '/' + folder})
-					new_folder = Path(project_dir) / folder
-					Path(new_folder).mkdir(parents=True, exist_ok=True)
-				manifest['resources'] = resources
-				# Write the datapackage file to the project folder
-				with open(datapackage_file, 'r') as f:
-					f.write(json.dumps(manifest))
-			except:
-				errors.append('<p>Could not build the project file structure.</p>')
-			# Now write the data to the project folder
-			try:
-				result = list(corpus_db.find(query))
-				for doc in result:
-					metapath = doc['metapath'].replace(',', '/')
-					path = os.path.join(metapath, doc['name'] + '.json')
-					filepath = os.path.join(project_dir, path)
-					with open(filepath, 'w') as f:
-						f.write(doc)
-				return errors
-			except:
-				errors.append('<p>Could not write the data to the project directory.</p>')
-				return errors
-
 class Notebook():
 	"""Models a Jupyter notebook."""
 
-	def __init__(self, manifest, projects_dir):
-			
+	def __init__(self, manifest, container, notebook_start, WORKSPACE_PROJECTS, WORKSPACE_TEMPLATES):			
 		"""Writes a new Jupyter notebook based on a template
 		in the project directory."""
 		# Configurable
 		self.errors = []
 		self.manifest = manifest
 		self.name = manifest['name']
-		self.projects_dir = projects_dir
-		self.template = 'http://mirrormask.english.ucsb.edu:9999/notebooks/write/templates/topic_browser_template/2_clean_data.txt'
-		self.output = projects_dir + '/templates/topic_browser_template/2_clean_data.ipynb'
-		# self.dt = datetime.datetime.today().strftime('%Y%m%d_%H%M_')
-		# self.project_directory   = 'projects/' + dt + project_name
+		self.notebook_start = notebook_start + '.txt'
+		self.workspace_projects = WORKSPACE_PROJECTS
+		self.templates_dir = WORKSPACE_TEMPLATES
+		self.container = container
+		self.project_dir = os.path.join(self.container, self.name)
+		self.workspace_dir = os.path.join(self.project_dir, 'Workspace')
+		# Will create /instance/workspace/projects/project_name/Workspace/start.ipynb
+		self.output = os.path.join(self.workspace_dir, notebook_start + '.ipynb')
+		self.today = datetime.now().strftime('%Y-%m-%d')
+		print('WORKSPACE_PROJECTS')
+		print(WORKSPACE_PROJECTS)
+		print('project_dir')
+		print(self.project_dir)
+		print('workspace_dir')
+		print(self.workspace_dir)
+		print('output')
+		print(self.output)
 
 		try:
 			# Retrieve a text file with the notebook cells
-			r = requests.get(self.template)
-			soup = BeautifulSoup(r.text, 'lxml')
+			template = os.path.join(self.templates_dir, self.notebook_start)
+			with open(template, 'r') as f:
+				cells = f.read()
+			soup = BeautifulSoup(cells, 'lxml')
 			kernelspec = {"display_name": "Python 3", "language": "python", "name": "python3"}
 			language_info = {}
 			language_info['codemirror_mode'] = {"name": "ipython", "version": 3}
@@ -184,6 +208,25 @@ class Notebook():
 			language_info['name'] = '3.6.1'
 			metadata = {'kernelspec': kernelspec, 'language_info': language_info}
 			dictionary = {'nbformat': 4, 'nbformat_minor': 2, 'cells': [], 'metadata': metadata}
+			# Insert some initial project metadata
+			source = '# ' + self.name + "\n"
+			source += '## Topic Modeling Project\n'
+			cell = {}
+			cell['metadata'] = {'collapsed': True}
+			cell['source'] = [source]
+			cell['cell_type'] = 'markdown'
+			dictionary['cells'].append(cell)
+			# Insert the project manifest and date
+			source = 'manifest = ' + json.dumps(self.manifest, indent=4, sort_keys=False, default=JSON_UTIL) + "\n"
+			source += 'today = "' + self.today + '"'
+			cell = {}
+			cell['metadata'] = {'collapsed': True}
+			cell['outputs'] = []
+			cell['execution_count'] = None
+			cell['source'] = [source]
+			cell['cell_type'] = 'code'
+			dictionary['cells'].append(cell)
+			# Iterate through the template cells
 			for d in soup.find_all():
 				# code cell
 				if d.name == 'code':
@@ -203,7 +246,9 @@ class Notebook():
 					dictionary['cells'].append(cell)
 				else:
 					pass
-			# Replace this with something to write the file
+			# Make sure the path is valid, then write the notebook
+			path = Path(self.output).parents[0]
+			Path(path).mkdir(parents=True, exist_ok=True)
 			open(self.output, 'w').write(json.dumps(dictionary))
 		except:
 			self.errors.append(['<p>Could not write the initial notebook to the project folder.</p>'])

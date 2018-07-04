@@ -1,0 +1,78 @@
+<markdown>
+# New Topic Browser Project
+Create a new Jupyter project for dfr browser generation.
+_This notebook is read-only. It may be customized and run, but settings will only be saved in the newly generated projects._'''
+</markdown>
+
+<markdown>
+-  v0.1 2016-10-07
+-  v0.2 2016-10-07 adapted to Jupyter notebook
+-  v0.3 2016-10-13 Jupyter correctly working with mallet
+-  v0.4 2016-10-18 Link generation and cleanup, documentation, read only.
+-  v0.5 2016-10-19 Incorporate scrubbing script, text_files_clean folder.
+-  v0.6 2016-10-19 split off most of project generation into project sub-notebooks
+-  v0.7 2016-10-28 add timedate stamps to project names for rapid exploration
+-  v0.8 2017-11-02 change to Python3
+-  v0.9 2017-11-03 strip template checkpoints and cache on copy (switch to shutil.copytree)
+-  v0.9.1 2018-06-08 integrated with WMS
+</markdown>
+
+<code>
+## INFO
+
+__author__    = 'Jeremy Douglass'
+__copyright__ = 'copyright 2017, The WE1S Project'
+__license__   = 'GPL'
+__version__   = '0.6'
+__email__     = 'jeremydouglass@gmail.com
+</code>
+
+<code>
+## IMPORT
+
+# from distutils.dir_util import copy_tree
+from shutil import copytree, ignore_patterns
+import os
+import datetime
+</code>
+
+<code>
+## AUTO-GENERATED VARIABLES
+
+project_name = manifest['name']
+project_title = manifest['title']
+</code>
+
+<markdown>
+## VARIABLES -- FILL OUT'''
+</markdown>
+
+<code>
+## VARIABLES
+
+## Customize these to specific project name and data
+
+# project_name        = manifest['title']
+
+template_directory  = 'templates/topic_browser_template'
+dt = datetime.datetime.today().strftime('%Y%m%d_%H%M_')
+project_directory   = 'projects/' + dt + project_name
+print(project_directory)
+</code>
+
+<markdown>
+## NEXT
+</markdown>
+
+<code>
+## NEXT
+## Generate a link to the next notebook
+
+from IPython.display import display, HTML
+browser_link_html = HTML('<p>A new <strong>'+ template_directory +'</strong> has been set up:<br><strong>'+ project_directory + '</strong></p><h2><a href='' + project_directory + '/1_import_data.ipynb' target='top'>Next: Import Data.</h2>')
+display(browser_link_html)
+</code>
+
+<markdown>
+----------
+</markdown>

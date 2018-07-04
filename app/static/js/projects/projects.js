@@ -223,15 +223,14 @@ function launchJupyter (btnId, formvals) {
 //
 
 $(document).ready(function () {
-
   // Handle the Display form on the index page
   $('#go').click(function (e) {
     var name = $('#display').val()
     window.location = '/projects/display/' + name
   })
-  $('#display').on('keypress',function (e) {
+  $('#display').on('keypress', function (e) {
     var key = (e.keyCode || e.which)
-    if (key === 13 || key === 3){
+    if (key === 13 || key === 3) {
       $('#go').click()
     }
   })

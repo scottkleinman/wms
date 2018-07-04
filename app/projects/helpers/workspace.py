@@ -58,14 +58,17 @@ def fetch_datapackage(manifest, zip_path, project_dir, workspace_projects, works
 		# Save the datapackage to disk
 		with open(zip_path, 'wb') as f:
 			f.write(content)
+			print('Wrote the datapackage in fetch_datapackage() to ' + zip_path + '.')
 		# Extract the zip archive
 		with zipfile.ZipFile(zip_path) as zf:
 			zf.extractall(workspace_projects)
+			print('Extracted ' + zip_path + ' in fetch_datapackage() to ' + workspace_projects + '.')
 		# Delete the datatapackage
 		Path(zip_path).unlink()
-			# os.remove(zip_path)
+		print('Deleted the datapackage in fetch_datapackage() at ' + zip_path + '.')
 		# Make a virtual workspace directory in the project.
 		Path(workspace_dir).mkdir(parents=True, exist_ok=True)
+		print('Made a workspace folder in fetch_datapackage() at ' + workspace_dir + '.')
 		return []
 	except:
 		shutil.rmtree(project_dir)
@@ -81,7 +84,7 @@ def validate_corpus_query(query):
 		return False
 
 
-def make_datapackage(manifest, project_dir, query):
+def make_datapackage(manifest, project_dir, workspace_dir, query):
 	"""Create a new datapackage from a Corpus query."""
 	errors = []
 	try:
@@ -91,12 +94,14 @@ def make_datapackage(manifest, project_dir, query):
 		resources = []
 		for folder in ['Sources', 'Corpus', 'Processes', 'Scripts']:
 			resources.append({'path': '/' + folder})
-			new_folder = Path(project_dir) / folder
+			new_folder = os.path.join(project_dir, folder)
 			Path(new_folder).mkdir(parents=True, exist_ok=True)
+			print('Made a folder in make_datapackage at ' + new_folder + '.')
 		manifest['resources'] = resources + [{'path': '/Workspace'}]
 		# Write the datapackage file to the project folder
 		with open(datapackage_file, 'w') as f:
 			f.write(json.dumps(manifest, indent=2, sort_keys=False, default=JSON_UTIL))
+			print('Wrote a datapackage file in make_datapackage at ' + datapackage_file + '.')
 	except:
 		errors.append('<p>Could not build the project file structure.</p>')
 	# Now write the data to the project folder
@@ -104,11 +109,13 @@ def make_datapackage(manifest, project_dir, query):
 		result = list(corpus_db.find(json.loads(query)))
 		for doc in result:
 			metapath = doc['metapath'].replace(',', '/')
-			new_metapath = Path(project_dir) / metapath
+			new_metapath = os.path.join(project_dir, metapath)
 			Path(new_metapath).mkdir(parents=True, exist_ok=True)
+			print('Made a folder in make_datapackage at ' + new_metapath + '.')
 			filepath = os.path.join(new_metapath, doc['name'] + '.json')
 			with open(filepath, 'w') as f:
 				f.write(json.dumps(doc, indent=2, sort_keys=False, default=JSON_UTIL))
+				print('Wrote a manifest file in make_datapackage at ' + filepath + '.')
 	except:
 		errors.append('<p>Could not write the data to the project directory.</p>')
 	return errors
@@ -130,7 +137,7 @@ class Datapackage():
 		self.project_dir = os.path.join(self.container, self.name)
 		self.workspace_dir = os.path.join(self.project_dir, 'Workspace')
 		self.zip_name = self.name + '.zip'
-		self.zip_path = self.container + '.zip'
+		self.zip_path = self.project_dir + '.zip'
 		if 'content' in manifest:
 			self.content = manifest['content']
 		else:
@@ -153,10 +160,11 @@ class Datapackage():
 		else:
 			# Otherwise, make a datapackage
 			if validate_corpus_query(json.loads(self.manifest['db-query'])):
-				result = make_datapackage(self.manifest, self.project_dir, self.manifest['db-query'])
+				result = make_datapackage(self.manifest, self.project_dir, self.workspace_dir, self.manifest['db-query'])
 				# If there are any errors, delete the container folder
 				if len(result) > 0:
-					shutil.rmtree(self.container)
+					print('Erasing folder.')
+					# shutil.rmtree(self.container)
 				self.errors += result
 			else:
 				self.errors.append('<p>Could not find any Corpus data. Please test your query.</p>')
@@ -172,7 +180,7 @@ class Notebook():
 		self.errors = []
 		self.manifest = manifest
 		self.name = manifest['name']
-		self.notebook_start = notebook_start + '.txt'
+		self.notebook_start = notebook_start
 		self.workspace_projects = WORKSPACE_PROJECTS
 		self.templates_dir = WORKSPACE_TEMPLATES
 		self.container = container
@@ -181,18 +189,21 @@ class Notebook():
 		# Will create /instance/workspace/projects/project_name/Workspace/start.ipynb
 		self.output = os.path.join(self.workspace_dir, notebook_start + '.ipynb')
 		self.today = datetime.now().strftime('%Y-%m-%d')
-		print('WORKSPACE_PROJECTS')
-		print(WORKSPACE_PROJECTS)
-		print('project_dir')
-		print(self.project_dir)
-		print('workspace_dir')
-		print(self.workspace_dir)
+		# print('WORKSPACE_PROJECTS')
+		# print(WORKSPACE_PROJECTS)
+		# print('project_dir')
+		# print(self.project_dir)
+		# print('workspace_dir')
+		# print(self.workspace_dir)
 		print('output')
 		print(self.output)
-
+		# 	Create a folder for the notebook
+		path = re.sub(r'\/start\.ipynb$', '', self.output)
+		Path(path).mkdir(parents=True, exist_ok=True)
+		dictionary = {}
 		try:
 			# Retrieve a text file with the notebook cells
-			template = os.path.join(self.templates_dir, self.notebook_start)
+			template = os.path.join(self.templates_dir, self.notebook_start + '.txt')
 			with open(template, 'r') as f:
 				cells = f.read()
 			soup = BeautifulSoup(cells, 'lxml')
@@ -246,10 +257,7 @@ class Notebook():
 					dictionary['cells'].append(cell)
 				else:
 					pass
-			# Make sure the path is valid, then write the notebook
-			path = Path(self.output).parents[0]
-			Path(path).mkdir(parents=True, exist_ok=True)
 			open(self.output, 'w').write(json.dumps(dictionary))
+			print('Wrote a notebook in Notebook() at ' + self.output + '.')
 		except:
 			self.errors.append(['<p>Could not write the initial notebook to the project folder.</p>'])
-

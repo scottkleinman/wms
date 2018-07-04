@@ -513,13 +513,12 @@ def launch_jupyter():
 	an error report is returned to the front end."""
 	errors = []
 	manifest = request.json['manifest']
-	# The folder containing the notebook (e.g. topic-modeling)
-	notebook_type = request.json['notebook']
+	# The folder containing the notebook (e.g. we1s-topic-modeling)
+	notebook_type = 'we1s-' + request.json['notebook']
 	# Notebook to launch
 	notebook_start = notebook_type + '/start'
 	# Path to notebook
 	path = manifest['name'] + '/Workspace/' + notebook_start + '.ipynb' 
-	notebook_path = os.path.join(WORKSPACE_PROJECTS, path)
 	# Fetch or create a datapackage based on the info received
 	datapackage = workspace.Datapackage(manifest, WORKSPACE_PROJECTS)
 	errors += datapackage.errors
@@ -529,8 +528,8 @@ def launch_jupyter():
 		errors += notebook.errors
 	# If the notebook has no errors, launch it
 		try:
-			print('Launching...')
-			# subprocess.run(['nbopen', notebook_path], stdout=subprocess.PIPE)
+			print('Launching from ' + notebook.output + '.')
+			subprocess.run(['nbopen', notebook.output], stdout=subprocess.PIPE)
 		except:
 			errors.append('<p>Could not launch the Jupyter notebook.</p>')
 	# If the process has accumulated errors on the way, send the

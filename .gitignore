@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 .Python
 build/
+*checkpoint.ipynb
 develop-eggs/
 dist/
 downloads/

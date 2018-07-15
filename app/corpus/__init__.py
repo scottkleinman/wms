@@ -158,7 +158,6 @@ def display(name):
 	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/display', 'label': 'Display Collection'}]
 	errors = []
 	manifest = {}
-	result = corpus_db.find_one({'name': name})
 	try:
 		result = corpus_db.find_one({'name': name})
 		assert result != None
@@ -187,6 +186,8 @@ def display(name):
 		with open("app/templates/corpus/template_config.yml", 'r') as stream:
 			templates = yaml.load(stream)
 	except:
+		nodetype = None
+		templates = yaml.load('')
 		errors.append('Unknown Error: The manifest does not exist or could not be loaded.')
 	return render_template('corpus/display.html', scripts=scripts,
 		breadcrumbs=breadcrumbs, manifest=manifest, errors=errors,

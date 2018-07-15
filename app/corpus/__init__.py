@@ -9,12 +9,14 @@ from bson import BSON
 from bson import json_util
 JSON_UTIL = json_util.default
 
-# from datetime import datetime
+from datetime import datetime
+from random import randint
+from pathlib import Path
 from jsonschema import validate, FormatChecker
 # from tabulator import Stream
 # import pandas as pd
 # from tableschema_pandas import Storage
-from flask import Blueprint, render_template, request, url_for, current_app, send_file
+from flask import Blueprint, render_template, request, url_for, current_app, send_file, session
 from werkzeug.utils import secure_filename
 
 import pymongo
@@ -34,6 +36,13 @@ from app.corpus.helpers import methods as methods
 #----------------------------------------------------------------------------#
 
 ALLOWED_EXTENSIONS = ['xlsx']
+# Horrible hack to get the instance path from out of context
+root_path = corpus.root_path.replace('\\', '/').split('/')
+del root_path[-2:]
+instance_path = '/'.join(root_path) + '/instance'
+TEMP_DIR = os.path.join(instance_path, 'temp')
+IMPORT_SERVER_DIR = os.path.join(instance_path, 'fake_server_dir')
+TRASH_DIR = os.path.join(instance_path, 'trash')
 
 #----------------------------------------------------------------------------#
 # Controllers.
@@ -479,7 +488,6 @@ def export_search():
 			methods.zipfolder('app/temp', 'search_results')
 		return json.dumps({'filename': filename, 'errors': errors}, default=JSON_UTIL)
 
-
 @corpus.route('/delete-manifest', methods=['GET', 'POST'])
 def delete_manifest():
 	""" Ajax route for deleting manifests."""
@@ -487,10 +495,9 @@ def delete_manifest():
 	name = request.json['name']
 	metapath = request.json['metapath']
 	msg = methods.delete_collection(name, metapath)
-	if msg  != 'success':
+	if msg != 'success':
 		errors.append(msg)
 	return json.dumps({'errors': errors})
-
 
 @corpus.route('/import', methods=['GET', 'POST'])
 def import_data():
@@ -501,28 +508,24 @@ def import_data():
 	'js/corpus/corpus.js',
 	'js/corpus/upload.js'
 	]
+	# Start an import session on page load
+	token = datetime.now().strftime('%Y%m%d_') + str(randint(0, 99))
+	session['IMPORT_DIR'] = os.path.join(TEMP_DIR, token).replace('\\', '/')
+
 	result = get_server_files()
+
 	# Needs better error handling
 	if result != 'error':
 		server_files = result
 	breadcrumbs = [{'link': '/corpus', 'label': 'Corpus'}, {'link': '/corpus/import', 'label': 'Import Collection Data'}]
 	return render_template('corpus/import.html', scripts=scripts, 
-			breadcrumbs=breadcrumbs, server_files=server_files)
+			breadcrumbs=breadcrumbs, server_files=server_files, session_token=token)
 
 def get_server_files():
 	""" Get the files available for import from the server."""
-	url = 'https://mirrormask.english.ucsb.edu:9999'
-	import requests
-	from bs4 import BeautifulSoup
-	# Uncomment this to process replace the dummy file names
-	# response = requests.get(url)
-	# if response.ok:
-	# 	soup = BeautifulSoup(response.text, 'html.parser')
-	# 	result = [url + node.get('href') for node in soup.find_all('a')]
-	# else:
-	# 	return 'error'
-	# return result
-	return ['myfile1.json', 'myfile2.json', 'myfile3.json', 'myzipfile1.zip']
+	file_list = os.listdir(IMPORT_SERVER_DIR)
+	# file_list = ['myfile1.json', 'myfile2.json', 'myfile3.json', 'myzipfile1.zip']
+	return file_list
 
 
 @corpus.route('/import-server-file', methods=['GET', 'POST'])
@@ -532,8 +535,6 @@ def import_server_data():
 	category = request.json['category']
 	branch = request.json['branch']
 	filename = request.json['filename']
-	base_url = 'https://mirrormask.english.ucsb.edu:9999/import-queue/'
-	url = base_url + filename
 	# Construction a metapath
 	if collection == '':
 		errors.append('Please indicate the name of the collection where you want to import the data.')
@@ -542,10 +543,10 @@ def import_server_data():
 	if branch != '':
 		metapath = metapath  + ',' + branch
 	# If the user's selected filename is in the server import directory
-	if filename in get_server_files():
+	if filename in os.listdir(IMPORT_SERVER_DIR):
 		# Iterate through json files in zip archive
 		if filename.endswith('.zip'):
-			with zipfile.ZipFile(url) as z:
+			with zipfile.ZipFile(os.path.join(IMPORT_SERVER_DIR, filename)) as z:
 				for fn in z.namelist():
 					# We're trusting that the zip archive contains
 					# only valid manifest files and no folders.
@@ -553,57 +554,75 @@ def import_server_data():
 						manifest = json.loads(f.read())
 					# Now we try to insert the manifest in the database
 					if corpus_db.find({'name': manifest['name'], 'metapath': metapath}).count > 0:
-						msg = 'A collection already exists containing a manifest with the name <code>' + name + '</code>.'
+						msg = 'A collection already exists containing a manifest with the name <code>' + manifest['name'] + '</code>.'
 						errors.append(msg)
 					else:
 						corpus_db.insert_one(manifest)
 		else:
 			# Import a single json manifest
 			try:
-				with open(url, 'r') as f:
+				with open(os.path.join(IMPORT_SERVER_DIR, filename), 'r') as f:
 					manifest = json.loads(f.read())
-					# Now we try to insert the manifest in the database
-					if corpus_db.find({'name': manifest['name'], 'metapath': metapath}).count > 0:
-						msg = 'A collection already exists containing a manifest with the name <code>' + name + '</code>.'
-						errors.append(msg)
-					else:
-						pass
-						# corpus_db.insert_one(manifest)
+				# Now we try to insert the manifest in the database
+				if corpus_db.find({'name': manifest['name'], 'metapath': metapath}).count() > 0:
+					msg = 'A collection already exists containing a manifest with the name <code>' + manifest['name'] + '</code>.'
+					errors.append(msg)
+				else:
+					# corpus_db.insert_one(manifest)
+					pass
+				# Move the file to the trash folder (ensuring it is unique)
+				source = os.path.join(IMPORT_SERVER_DIR, filename)
+				if filename in os.listdir(TRASH_DIR):
+					filename = datetime.now().strftime('%Y%m%d%H%M%S_') + filename
+				destination = os.path.join(TRASH_DIR, filename)
+				shutil.move(source, destination)
 			except:
-				errors.append('Could not access the url.')
+				errors.append('<p>The file could not be read or the manifest could not be inserted in the database.</p>')
 	else:
 		errors.append('The filename could not be found on the server.')
-	print(errors)
 	if len(errors) > 0:
 		return json.dumps({'result': 'fail', 'errors': errors})
 	else:
 		return json.dumps({'result': 'success', 'errors': []})
 
+@corpus.route('/refresh-server-imports', methods=['GET', 'POST'])
+def refresh_server_imports():
+	file_list = get_server_files()
+	return json.dumps({'file_list': file_list})
+
 
 @corpus.route('/remove-file', methods=['GET', 'POST'])
 def remove_file():
 	"""Ajax route triggered when a file is deleted from the file
-	uploads table. This function ensures that it is removed from
-	both the database and the uploads folder.
+	uploads table. This function removes the file from the imports
+	folder but does not remove it from the database.
 	"""
 	if request.method == 'POST':
-		# Delete the record (if it exists) from the database
-		collection = request.json['collection']
-		if collection.startswith(',Corpus,'):
-			collection = collection.replace(',Corpus,', '')
-		path = ',Corpus,' + collection + ',' + request.json['category'] + ','
-		if request.json['branch'] != '':
-			path = path + request.json['branch'] + ','
-		filename = request.json['filename'] 
-		name = filename.strip('.json')
-		corpus_db.delete_one({'path': path, 'name': name})
-		# Now delete the file (if it exists) in the uploads folder
-		mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
-		myfile = os.path.join(mydir, filename)
-		# The removal should only fail if there is no DB entry or file to remove.
-		# So no need to handle errors.
+		if os.path.isfile(os.path.join(session['IMPORT_DIR'], request.json['filename'])):
+			source = os.path.join(session['IMPORT_DIR'], request.json['filename'])
+			destination = os.path.join(session['TRASH_DIR'], request.json['filename'])
+			os.rename(source, destination)
 		return json.dumps({'response': 'success'})
 
+@corpus.route('/remove-all-files', methods=['GET', 'POST'])
+def remove_all_files():
+	"""Ajax route triggered when all files are deleted from the file
+	uploads table. This function deletes the import session folder
+	but does not remove any items already added to the database.
+	"""
+	# If there is a session import folder
+	if os.path.isdir(session['IMPORT_DIR']):
+		# Move each file to the trash folder (ensuring it is unique)
+		for filename in os.listdir(session['IMPORT_DIR']):
+			if filename in os.listdir(TRASH_DIR):
+				filename = datetime.now().strftime('%Y%m%d%H%M%S_') + filename
+			destination = os.path.join(TRASH_DIR, filename)
+			shutil.move(source, destination)
+		# Delete the session import folder
+		shutil.rmtree(session['IMPORT_DIR'])
+		return json.dumps({'response': 'success'})
+	else:
+		return json.dumps({'response': 'session is empty'})
 
 @corpus.route('/save-upload', methods=['GET', 'POST'])
 def save_upload():
@@ -611,21 +630,27 @@ def save_upload():
 	and insert it in the database.
 	"""
 	if request.method == 'POST':
+		print('Working session folder: ' + session['IMPORT_DIR'])
 		errors = []
-		# Handle the form data
-		exclude = ['branch', 'category', 'collection']
-		node_metadata = {}
-		for key, value in request.json.items():
-			if key not in exclude and value != '' and value != []:
-				node_metadata[key] = value
-		# Set the name and metapath
-		if request.json['collection'].startswith('Corpus,'):
-			collection = request.json['collection']
-		else:
-			collection = 'Corpus,' + request.json['collection']
+		# Make sure the collection exists before handling form data
 		try:
-			result = list(corpus_db.find({'metapath': 'Corpus', 'name': request.json['collection']}))
+			result = list(corpus_db.find({'name': request.json['collection']}))
 			assert result != []
+			# Handle the form data
+			exclude = ['branch', 'category', 'collection']
+			node_metadata = {}
+			for key, value in request.json.items():
+				if key not in exclude and value != '' and value != []:
+					node_metadata[key] = value
+			# Set the name and metapath
+			if request.json['collection'].startswith('Corpus,'):
+				collection = request.json['collection']
+			else:
+				collection = 'Corpus,' + request.json['collection']
+		except:
+			errors.append('The specified collection does not exist in the database. Check your entry or <a href="/corpus/create">create a collection</a> before importing data.')
+
+		if len(errors) == 0:
 			# Set the name and path for the new manifest
 			node_metadata = {}
 			if request.json['branch'] != '':
@@ -634,95 +659,94 @@ def save_upload():
 			else:
 				node_metadata['name'] = request.json['category']
 				node_metadata['metapath'] = collection
-			mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
-			# Make sure files exist in the uploads folder
-			if len(os.listdir(mydir)) > 0:
-				# If the category or branch node does not exist, create it
-				"""
-				This section has the effect of forcing unique names, so it
-				will have to be changed.
-				"""
-				# parent = list(corpus_db.find({'name': node_metadata['name'], 'path': node_metadata['path']}))
-				# if len(parent) == 0:
-				# 	try:					
-				# 		corpus_db.insert_one(node_metadata)
-				# 	except:
-				# 		print('Could not create a RawData node.')
-				# Start by unzipping any zip archives
-				# NB. This only handles top-level folders. There  
-				# should be a routine to detect and parse datapackage.json
-				# so that predictable multi-level archives can be loaded.
-				for filename in os.listdir(mydir):
-					if filename.endswith('.zip'):
-						try:
-							# Unzip the archive
-							filepath = os.path.join(mydir, filename)
-							with zipfile.ZipFile(filepath) as zf:
-								zf.extractall(mydir)
-							# Move the files up to the main uploads folder
-							extracted_folder = os.path.splitext(filename)[0]
-							sourcepath = os.path.join(mydir, extracted_folder)
-							for file in os.listdir(sourcepath):
-								if file.endswith('.json'):
-									shutil.move(os.path.join(sourcepath, file), os.path.join(mydir, file))
-							# Remove the zip archive and empty folder
-							os.remove(filepath)
-							os.rmdir(sourcepath)
-						except:
-							errors.append('<p>Unknown Error: Could not process the zip file <code>' + file.filename + '</code>.</p>')
-				# Now create a data manifest for each file and insert it
-				for filename in os.listdir(mydir):
-					if filename.endswith('.json'):
-						filepath = os.path.join(mydir, filename)
-						metapath = node_metadata['metapath'] + ',' + node_metadata['name']
-						manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv2.0', 'metapath': metapath}
-						try:
-							with open(filepath, 'rb') as f:
-								doc = json.loads(f.read())
-								for key, value in doc.items():
-									if key not in ['name', 'namespace', 'metapath']:
-										manifest[key] = value
-						except:
-							errors.append('The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.')
-						schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/Data.json'
-						schema = json.loads(requests.get(schema_file).text)
-						try:
-							methods.validate(manifest, schema, format_checker=FormatChecker())
-							result = methods.create_record(manifest)
-							errors = errors + result
-						except:
-							print('Could not validate manifest for ' + filename)
-							errors.append('A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.')
-					else:
-						pass	
-				# We're done. Empty the uploads folder.
-				mydir = os.path.join('app', current_app.config['UPLOAD_FOLDER'])
-				list(map(os.unlink, (os.path.join(mydir,f) for f in os.listdir(mydir))))
-			else:
-				print('There were no files in the uploads directory.')
-		except:
-			errors.append('The specified collection does not exist in the database. Check your entry or <a href="/corpus/create">create a collection</a> before importing data.')
-		if errors == []:			
-			response = {'response': 'Manifests created successfully.'}
+
+		# If the specified metapath does not exist, create it
+		if len(errors) == 0:
+			parent = list(corpus_db.find({'name': node_metadata['name'], 'metapath': node_metadata['metapath']}))
+			if len(parent) == 0:
+				try:
+					corpus_db.insert_one(node_metadata)
+				except:
+					errors.append('<p>The specified metapath does not exist and could not be created.</p>')
+
+		# Now create a data manifest for each file and insert it
+		if len(errors) == 0:
+			for filename in os.listdir(session['IMPORT_DIR']):
+				print('Creating manifest for ' + filename)
+				if filename.endswith('.json'):
+					filepath = os.path.join(session['IMPORT_DIR'], filename)
+					metapath = node_metadata['metapath'] + ',' + node_metadata['name']
+					manifest = {'name': os.path.splitext(filename)[0], 'namespace': 'we1sv2.0', 'metapath': metapath}
+					try:
+						with open(filepath, 'rb') as f:
+							doc = json.loads(f.read())
+							for key, value in doc.items():
+								if key not in ['name', 'namespace', 'metapath']:
+									manifest[key] = value
+					except:
+						errors.append('<p>The file <code>' + filename + '</code> could not be loaded or it did not have a <code>content</code> property.</p>')
+					# Validate the manifest before inserting
+					schema_file = 'https://raw.githubusercontent.com/whatevery1says/manifest/master/schema/v2.0/Corpus/Data.json'
+					schema = json.loads(requests.get(schema_file).text)
+					print(manifest['name'])
+					print(manifest['metapath'])
+					try:
+						methods.validate(manifest, schema, format_checker=FormatChecker())
+						result = methods.create_record(manifest)
+						print('Is this my error')
+						errors = errors + result
+						print(errors)
+					except:
+						errors.append('<p>A valid manifest could not be created from the file <code>' + filename + '</code> or the manifest could not be added to the database due to an unknown error.</p>')
+				else:
+					errors.append('<p>The file <code>' + filename + '</code> is an invalid format.</p>')
+
+		# We're done. Delete the import directory
+		shutil.rmtree(session['IMPORT_DIR'])
+
+		# Refresh the session
+		token = datetime.now().strftime('%Y%m%d_') + str(randint(0, 99))
+		session['IMPORT_DIR'] = os.path.join(TEMP_DIR, token).replace('\\', '/')
+
+		if len(errors) == 0:
+			return json.dumps({'result': 'success', 'session_token': 'token'})
 		else:
-			response = {'errors': errors}
-		return json.dumps(response)
+			return json.dumps({'errors': errors})
 
-
-@corpus.route('/upload', methods=['GET', 'POST'])
+@corpus.route('/upload/', methods=['GET', 'POST'])
 def upload():
 	"""Ajax route saves each file uploaded by the import function
 	to the uploads folder.
 	"""
+	errors = []
 	if request.method == 'POST':
-		errors = []
+		# Create a session import directory if it does not exist
+		if not os.path.exists(session['IMPORT_DIR']):
+			os.makedirs(session['IMPORT_DIR'])
+
 		for file in request.files.getlist('file'):
-			# Accept only json files for now...
-			fn = file.filename
-			if fn.endswith('.json') or fn.endswith('.zip'):
+			# Unzip .zip files
+			if file.filename.endswith('.zip'):
+				try:
+					filepath = os.path.join(session['IMPORT_DIR'], file.filename)
+					with zipfile.ZipFile(filepath) as zf:
+						zf.extractall(session['IMPORT_DIR'])
+					# Move the files up to the main uploads folder
+					extracted_folder = os.path.splitext(file.filename)[0]
+					sourcepath = os.path.join(session['IMPORT_DIR'], extracted_folder)
+					for file in os.listdir(sourcepath):
+						if file.endswith('.json'):
+							shutil.move(os.path.join(sourcepath, file), os.path.join(session['IMPORT_DIR'], file))
+					# Remove the zip archive and empty folder
+					os.remove(filepath)
+					os.rmdir(sourcepath)
+				except:
+					errors.append('<p>Unknown Error: Could not process the zip file <code>' + file.filename + '</code>.</p>')
+			# Handle .json files
+			elif file.filename.endswith('.json'):
 				try:
 					filename = secure_filename(file.filename)
-					file_to_save = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+					file_to_save = os.path.join(session['IMPORT_DIR'], filename)
 					file_to_save = os.path.join('app', file_to_save)
 					file.save(file_to_save)
 				except:
@@ -730,10 +754,10 @@ def upload():
 			else:
 				errors.append('<p>The file <code>' + file.filename + '</code> has an invalid file type.</p>')					
 		if errors == []:			
-			response = {'response': 'file(s) saved successfully'}
+			response = {'response': 'File(s) saved successfully.'}
 		else:
 			response = {'errors': errors}
-		return json.dumps(response)					
+		return json.dumps(response)
 
 @corpus.route('/clear/<metapath>')
 def clear(metapath):
@@ -753,44 +777,3 @@ def clear(metapath):
 	except:
 		response = 'There was an error. No records were deleted.'
 	return response
-
-
-@corpus.route('/launch-jupyter', methods=['GET', 'POST'])
-def launch_jupyter():
-	""" Experimental Page to launch a Jupyter notebook."""
-	if request.method == 'POST':
-		try:
-			query = request.json['query']
-			limit = int(request.json['advancedOptions']['limit'])
-			sorting = []
-			if request.json['advancedOptions']['show_properties'] != []:
-				show_properties = request.json['advancedOptions']['show_properties']
-			else:
-				show_properties = '\'\''
-			sorting = []
-			for item in request.json['advancedOptions']['sort']:
-				if item[1] == 'ASC':
-					opt = (item[0], pymongo.ASCENDING)
-				else:
-					opt = (item[0], pymongo.DESCENDING)
-				sorting.append(opt)
-			sorting = "[('name', pymongo.ASCENDING)]"
-			q = 'result = list(corpus_db.find(' + str(query) + ', '
-			q += 'limit=' + str(limit) + ', '
-			q += 'projection=' + str(show_properties) + ')'
-			if sorting != []:
-				q += '.sort(' + str(sorting) + ')'
-			q += ')'
-			template_path = os.path.join('app', 'jupyter_notebook_template.ipynb')
-			with open(template_path, 'r') as f:
-				doc = f.read()
-			doc = doc.replace('USER_QUERY', q)
-			file_path = os.path.join('app', 'WMS_query.ipynb')
-			with open(file_path, 'w') as f:
-				f.write(doc)
-			# This works but breaks the Flask process, even with shell=True
-			# subprocess.call(['jupyter', 'notebook'], shell=False)
-			subprocess.run(['nbopen', file_path], stdout=subprocess.PIPE)
-			return 'success'
-		except:
-			return 'error'

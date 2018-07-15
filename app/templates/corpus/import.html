@@ -5,6 +5,8 @@
   </script>
  -->
 <style type="text/css">
+    .hidden {display: none;}
+
     #actions {
       margin: 2em 0;
     }
@@ -71,11 +73,11 @@
   <div class="card card-body">
 
     <!-- Manifest Information -->
-    <form id="metadataForm">        
+    <form id="metadataForm" enctype="multipart/form-data">        
       <div class="form-row">
         <div class="col">
           <label for="collection">Collection</label>
-          <input type="text" name="collection" id="collection" class="form-control">
+          <input type="text" name="collection" id="collection" class="form-control" required>
         </div>
         <div class="col">
             <label for="category">Category</label>
@@ -150,6 +152,7 @@
             </div>
           </div>
         </div>
+        <input type="hidden" name="session_token" id="session_token" value="{{ session_token|safe }}">
     </form>
 
     <!-- Upload Actions -->
@@ -162,13 +165,17 @@
             <i class="fa fa-plus"></i>
             <span>Add files...</span>
         </span>
-        <button type="submit" class="btn btn-outline-editorial start ">
+        <button type="submit" class="btn btn-outline-editorial start startUploads hidden">
             <i class="fa fa-upload"></i>
             <span>Start upload</span>
         </button>
-        <button id="cancelAll" type="reset" class="btn btn-outline-editorial cancel">
+        <button id="cancelAll" type="reset" class="btn btn-outline-editorial cancelAll hidden">
+                <i class="fa fa-ban"></i>
+                <span>Cancel upload</span>
+            </button>
+            <button id="testFiles" type="reset" class="btn btn-outline-editorial">
             <i class="fa fa-ban"></i>
-            <span>Cancel upload</span>
+            <span>Get file list</span>
         </button>
       </div>
 
@@ -210,18 +217,35 @@
               <span>Cancel</span>
           </button>
           <button data-dz-remove class="btn btn-outline-editorial delete">
-            <i class="fa fa-trash"></i>
-            <span>Delete</span>
+                <i class="fa fa-ban"></i>
+                <span>Remove</span>
           </button>
-        </div>
+          </div>
       </div>
 
     </div>
 </div>
 
 <br>
+
 <h4>The following files on the server are available for importing:</h4>
-<small>Files will be added to the collection, category, and branch listed above.</small>
+<style type="text/css">
+    #refresh.btn:focus, #refresh.btn.focus {
+        box-shadow: none;
+    }
+    .import-progress {
+        opacity: 0;
+        transition: opacity 0.3s linear;
+      }  
+</style>
+<div class="row">
+    <div class="col">
+        <small class="pull-left" style="margin-left: 5px;">Files will be added to the collection, category, and branch listed above.</small>
+    </div>
+    <div class="col">
+        <button id="refresh" title="Refresh" class="btn btn-sm btn-outline-info pull-right" style="margin: 4px;"><i class="fa fa-lg fa-refresh"></i></button>
+    </div>
+</div>
 <!-- Server Imports -->
 <div class="card card-body">
     <div class="table table-striped files" id="server-import-previews">
@@ -236,7 +260,7 @@
           </div>
           <div>
               <p class="size" data-dz-size></p>
-              <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="progress progress-striped active import-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                 <div class="progress-bar progress-bar-success" style="width:0%;" data-dz-uploadprogress></div>
               </div>
           </div>

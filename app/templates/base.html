@@ -111,6 +111,11 @@
 
 			</div>
 
+			<div id="processingIcon">
+				<i class="fa fa-spinner fa-pulse fa-3x fa-fw text-info"></i>
+				<span class="sr-only">Loading...</span>
+			</div>
+	
 		<!-- Scripts -->
 			<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 			<script src="{{ url_for('static', filename='js/skel.min.js') }}"></script>
@@ -125,6 +130,6 @@
 			<!-- <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script> -->
 			<script src="{{ url_for('static', filename='js/bootbox.min.js') }}"></script>
 			<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/4.4.0/bootbox.min.js"></script> -->
-            {% if scripts %}{% for script in scripts %}<script src="{{ url_for('static', filename=script) }}"></script>{% endfor %}{% endif %}
+			{% if scripts %}{% for script in scripts %}<script src="{{ url_for('static', filename=script) }}"></script>{% endfor %}{% endif %}
 	</body>
 </html>

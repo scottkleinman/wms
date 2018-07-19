@@ -348,11 +348,10 @@ $(document).ready(function () {
 	// });
 
 	$(".form_datetime").datetimepicker({
-		format: 'yyyy-mm-ddThh:ii:ss',
+		format: 'yyyy-mm-dd',
 		todayBtn: true,
 		pickerPosition: "bottom-left",
 		autoclose: true
-
 	});
 	// $(function() {
 	// 	var start = "";

@@ -49,9 +49,6 @@ def index():
 	'js/jQuery-File-Upload-9.20.0/js/jquery.fileupload.js', 
 	'js/sources/sources.js',
 	'js/bootstrap-datetimepicker.js'
-
-	
-
 	]
 	styles = []
 	breadcrumbs = [{'link': '/sources', 'label': 'Sources'}]

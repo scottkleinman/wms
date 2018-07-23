@@ -365,7 +365,7 @@ $(document).ready(function () {
     for (var i = 1; i < map.length; i++) {
       if (map[i].name != map[i - 1].name) {
         if (map[i].value != '') {
-          s = s + '/r/n' + map[i].value
+          s = s + '\r\n' + map[i].value
         } else {
           s = s + ''
         }
@@ -375,7 +375,7 @@ $(document).ready(function () {
             s = s + map[i].value
           } else {
             if (map[i].id == 1 && map[i - 1].value == '') {
-              s = s + '/r/n' + map[i].value
+              s = s + '\r\n' + map[i].value
             } else {
               s = s + ',' + map[i].value
             }

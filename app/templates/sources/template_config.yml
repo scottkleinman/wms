@@ -44,7 +44,7 @@ source-template:
     fieldtype: textarea
     placeholder: List each author on a separate line.
   - name: date
-    fieldtype: text
+    fieldtype: textarea
     placeholder: List each date on a separate line. Date ranges should separate start and end dates with commas. Valid formats are YYYY-MM-DD and YYYY-MM-DDTHH:MM:SS.
   - name: edition
     fieldtype: text

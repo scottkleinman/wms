@@ -5,7 +5,7 @@
 function jsonifyForm() {
 	/* Handles JSON form serialisation */
 	var form = {};
-	$.each($("form").serializeArray(), function (i, field) {
+	$.each($("form *").not('.datepicker').serializeArray(), function (i, field) {
 		form[field.name] = field.value || "";
 	});
 	return form;
@@ -334,77 +334,78 @@ $(document).ready(function () {
 		}
 	});
 
-	// $( ".datepicker" ).datepicker({
-	// 	dateFormat: 'yy-mm-dd',//check change
-	// 	timeFormat: 'hh:mm:ss'
-	// });
-
-	//   $('.datepicker').datetimepicker();
-
-	// $(function () {
-	// 	var val = $('#datepicker').val();
-	// 	$('#datepicker').datetimepicker();
-	// 	$('#datepicker').val(val);
-	// });
-
-	$(".form_datetime").datetimepicker({
-		format: 'yyyy-mm-dd',
-		todayBtn: true,
-		pickerPosition: "bottom-left",
-		autoclose: true
-	});
-	// $(function() {
-	// 	var start = "";
-	// 	var end = "";
-	// 	$(".date_start").on('change paste keyup',function(e) {
-	// 		e.preventDefault();
-	// 		start = $(this).val();
-	// 	});	
-	// 	$(".date_end").on('change paste keyup',function(e) {
-	// 		e.preventDefault();
-	// 		end = $(this).val();
-	// 	});
-	// 	document.getElementById("date").value  = start + "/r/" + end;
-	// });
-
-	var map = ["", ""];
-
-	$(".date_start").on('change', function (e) {
-		e.preventDefault();
-		map[0] = $(this).val();
-		document.getElementById("date").value = map[0] + "," + map[1];
+	/* datepicker functions */
+	$( ".datepicker" ).datepicker({
+		dateFormat: 'yy-mm-dd',//check change
+		timeFormat: 'hh:mm:ss',
+		constrainInput: false
 	});
 
-	$(".date_end").on('change', function (e) {
-		e.preventDefault();
-		map[1] = $(this).val();
-		document.getElementById("date").value = map[0] + "," + map[1];
+	var counter = 0;
+
+	function dict(name, id, value) {
+		this.name = name;
+		this.id = id;
+		this.value = value;
+	}
+
+	$('#add_date').on('click', function() { 
+		counter = counter + 1;
+		var elem = '<li id="concatenate"><p class="datep">start date: <input name="'+ counter +'" size="16" type="text" value="" class="datepicker date"></p><p class="datep">end date: <input name="' + counter+ '" size="16" type="text" value="" class="datepicker date"></p><button type="button" class="remove_date btn btn-lg btn-outline-editorial">-</button></li>';
+		$('ol').append(elem);
+		$( ".datepicker" ).datepicker({
+			dateFormat: 'yy-mm-dd',//check change
+			timeFormat: 'hh:mm:ss',
+			constrainInput: false
+		});
+		return false; //prevent form submission
 	});
 
 
+	$('ol').on('click','.remove_date',function () {
+		$(this).parent().remove();   
+		return false;
+	});
+	
+	$('#getdatevalue').click ( function() {
+		var map = [];
+		$(".date").map(function(){
+			var date = new dict($(this).attr('name'),$(this).parent().index(),$(this).val());
+			map.push(date);
+		});
+		var s = "";
+		for (var i = 1; i < map.length; i++){
+			if(map[i].name != map[i-1].name) {
+				if(map[i].value != ""){
+					s = s + "/r/n" + map[i].value;
+				}	
+				else {
+					s = s + "";
+				}
+			}
+			else {
+				if(map[i].value != ""){
+					if(map[i].id == 1 && map[i].name == "0" && map[i-1].value == ""){
+						s = s + map[i].value;
+					}	
+					else {
+						if(map[i].id == 1 && map[i-1].value == ""){
+							s = s + "/r/n" + map[i].value;
+						}
+						else {
+							s = s + "," + map[i].value;
+						}
+					}
+				}
+				else {
+					s = s + "";
+				}
+			}
+		}
+		s = map[0].value + s;
+		document.getElementById("date").value = s;
+	});
 
-
-
-	// $(function(){
-
-	// 	$(".date").each(function(){
-	// 		map[$(this).attr("name")] = $(this).val();
-	// 	});
-	// 	var s = "";
-	// 	console.log(map);
-	// });
-
-	// $(document).ready(function(){
-	// 	$(".date_start").change(function(){
-	// 		var store = "";
-	// 		var x = $("form").serializeArray();
-	// 		$.each(x, function(i, field){
-	// 		   store = store +"" + field.value + "\n";
-	// 		});
-	// 		document.getElementById("demo").innerHTML = store;
-	// 		console.log(store);
-	// 	});
-	// });
 
 	//
 	// Display Page Functions

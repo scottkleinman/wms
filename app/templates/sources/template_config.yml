@@ -58,5 +58,3 @@ source-template:
     default: eng
   - name: citation
     fieldtype: text
-  - name: date
-    fieldtype: hidden

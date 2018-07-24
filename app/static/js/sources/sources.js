@@ -328,6 +328,14 @@ $(document).ready(function () {
     dateFormat: 'yy-mm-dd', // check change
     timeFormat: 'hh:mm:ss',
     constrainInput: false
+  }).on('change', function () {
+    if (moment($(this).val()).isValid()) {
+      document.getElementById($(this).attr('id')).setAttribute('class', 'is-valid form-control datepicker date')
+    } else if ($(this).val() == '') {
+      document.getElementById($(this).attr('id')).setAttribute('class', 'datepicker date')
+    } else {
+      document.getElementById($(this).attr('id')).setAttribute('class', 'is-invalid form-control datepicker date')
+    }
   })
 
   var counter = 0
@@ -340,13 +348,21 @@ $(document).ready(function () {
 
   $('#add_date').on('click', function () {
     counter = counter + 1
-    var elem = '<li id="concatenate"><p class="datep">start date: <input name="' + counter + '" size="16" type="text" value="" class="datepicker date"></p><p class="datep">end date: <input name="' + counter + '" size="16" type="text" value="" class="datepicker date"></p><button type="button" class="remove_date btn btn-lg btn-outline-editorial">-</button></li>'
+    var elem = '<li id="concatenate"><label class="col-form-label" for="ds_' + counter + '"></label><p class="datep">start date: <input id="ds_' + counter + '" name="' + counter + '" size="16" type="text" value="" class="datepicker date"></p><label class="col-form-label" for="de_' + counter + '"></label><p class="datep">end date: <input id="de_' + counter + '" name="' + counter + '" size="16" type="text" value="" class="datepicker date "></p></li>'
     $('ol').append(elem)
     $('.datepicker').datepicker({
       dateFormat: 'yy-mm-dd', // check change
       timeFormat: 'hh:mm:ss',
       constrainInput: false
-    })
+    }).on('change', function () {
+      if (moment($(this).val()).isValid()) {
+        document.getElementById($(this).attr('id')).setAttribute('class', 'is-valid form-control datepicker date')
+      } else if ($(this).val() == '') {
+        document.getElementById($(this).attr('id')).setAttribute('class', 'datepicker date')
+      } else {
+        document.getElementById($(this).attr('id')).setAttribute('class', 'is-invalid form-control datepicker date')
+      }
+	  })
     return false // prevent form submission
   })
 
@@ -357,9 +373,20 @@ $(document).ready(function () {
 
   $('#getdatevalue').click(function () {
     var map = []
+    var alerterror = 0
     $('.date').map(function () {
-      var date = new dict($(this).attr('name'), $(this).parent().index(), $(this).val())
-      map.push(date)
+	  var date = new dict($(this).attr('name'), $(this).parent().index(), $(this).val())
+	  if (moment(date.value).isValid() || date.value == '') {
+		  map.push(date)
+	  } else {
+		  document.getElementById($(this).attr('id')).setAttribute('class', 'is-invalid form-control datepicker date')
+		  if (alerterror < 1) {
+			  alert('worng date format')
+		  }
+		  date.value = 'invalid'
+		  map.push(date)
+		  alerterror++
+	  }
     })
     var s = ''
     for (var i = 1; i < map.length; i++) {

@@ -2,3 +2,7 @@
 	display:inline-block !important;
     width: 200px !important;
 }
+
+.errorinput {
+    background: red;
+ }

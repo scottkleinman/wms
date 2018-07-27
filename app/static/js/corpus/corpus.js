@@ -5,7 +5,8 @@
 function jsonifyForm (formObj) {
   /* Handles JSON form serialisation */
   var form = {}
-  $.each(formObj.serializeArray(), function (i, field) {
+  let leave_out_date = "#" + formObj.attr('id') + " *"
+  $.each($(leave_out_date).not('.datepicker').serializeArray(), function (i, field) {
     form[field.name] = field.value || ''
   })
   return form
@@ -251,6 +252,21 @@ function updateManifest (jsonform, name) {
     })
 }
 
+function cleanup () {
+	var newform = jsonifyForm($('#manifestForm'))
+	for (var key in newform) {
+	  if (newform[key] == '') delete newform[key]
+	}
+	return newform
+  }
+
+  function cleanup () {
+    var newform = jsonifyForm()
+    for (var key in newform) {
+      if (newform[key] == '') delete newform[key]
+    }
+    return newform
+    }
 //
 // $(document).ready() Event Handling
 //
@@ -281,7 +297,7 @@ $(document).ready(function () {
     e.preventDefault()
     $('form').hide()
     $('#previewDisplay').show()
-    var jsonform =  jsonifyForm($('#manifestForm'))
+    var jsonform =  cleanup()
     $('#manifest').html(JSON.stringify(jsonform, null, '  '))
   })
 
@@ -309,6 +325,9 @@ $(document).ready(function () {
     }
   })
 
+  $('#updated').dateformat()
+  $('#created').dateformat()
+
   /* Handles the nodetype buttons for creating manifests */
   $('input[name="nodetype"]').click(function (e) {
     var val = $(this).val()
@@ -317,16 +336,21 @@ $(document).ready(function () {
       case setting === 'collection' || setting === 'rawdata' || setting === 'processeddata':
         var template = $('#' + setting + '-template').html()
         $('#manifestCard').html(template)
+        $('#updated').dateformat()
+        $('#created').dateformat()
         break
       case setting === 'branch':
         template = $('#branch-template').html()
         $('#manifestCard').html(template)
+        $('#updated').dateformat()
         break
       default:
         template = $('#generic-template').html()
         $('#manifestCard').html(template)
         $('#name').val(val)
         $('#title').val(val)
+        $('#updated').dateformat()
+        $('#created').dateformat()
     }
     $('.nav-tabs a[href="#required"]').tab('show')
   })

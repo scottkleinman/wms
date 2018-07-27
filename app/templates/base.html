@@ -18,6 +18,7 @@
 		<!--[if lte IE 8]><script src="{{ url_for('static', filename='js/ie/html5shiv.js') }}"></script><![endif]-->
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/we1s.css') }}" />
+		<link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
 		<!--[if lte IE 9]><link rel="stylesheet" href="{{ url_for('static', filename='css/ie9.css') }}" /><![endif]-->
 		<!--[if lte IE 8]><link rel="stylesheet" href="{{ url_for('static', filename='css/ie8.css') }}" /><![endif]-->
 		<link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-4.1.0-dist/css/bootstrap.min.css') }}" />
@@ -129,6 +130,7 @@
 			<!-- <script src="{{ url_for('static', filename='bootstrap-4.1.0-dist/js/bootstrap.min.js') }}"></script> -->
 			<!-- <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script> -->
 			<script src="{{ url_for('static', filename='js/bootbox.min.js') }}"></script>
+			
 			<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/4.4.0/bootbox.min.js"></script> -->
 			{% if scripts %}{% for script in scripts %}<script src="{{ url_for('static', filename=script) }}"></script>{% endfor %}{% endif %}
 	</body>

@@ -4,11 +4,11 @@
 
 function jsonifyForm() {
 	/* Handles JSON form serialisation */
-    var form = {};
-    $.each($("form").serializeArray(), function (i, field) {
-        form[field.name] = field.value || "";
-    });
-    return form;
+	var form = {};
+	$.each($("form").serializeArray(), function (i, field) {
+		form[field.name] = field.value || "";
+	});
+	return form;
 }
 
 //
@@ -26,30 +26,30 @@ function createManifest(jsonform) {
 		data: manifest,
 		contentType: 'application/json;charset=UTF-8',
 	})
-	.done(function(response) {
-		var manifest = JSON.parse(response)['manifest'];
-		var errors = JSON.parse(response)['errors'];
-		if (errors != '') {
-			msg = '<p>Could not save the manifest because of the following errors:</p>' + errors;
-		}
-		else {
-			msg = '<p>Saved the following manifest:</p>' + manifest;
-		}
-	    bootbox.alert({
-        message: msg,
-        callback: function () {
-            window.location = '/sources';
-        }
-	    });
-	})
-	.fail(function(jqXHR, textStatus, errorThrown) {
-	    bootbox.alert({
-        message: '<p>The manifest could not be saved because of the following errors:</p>'+response,
-        callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
-        }
-	    });
-	});
+		.done(function (response) {
+			var manifest = JSON.parse(response)['manifest'];
+			var errors = JSON.parse(response)['errors'];
+			if (errors != '') {
+				msg = '<p>Could not save the manifest because of the following errors:</p>' + errors;
+			}
+			else {
+				msg = '<p>Saved the following manifest:</p>' + manifest;
+			}
+			bootbox.alert({
+				message: msg,
+				callback: function () {
+					window.location = '/sources';
+				}
+			});
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			bootbox.alert({
+				message: '<p>The manifest could not be saved because of the following errors:</p>' + response,
+				callback: function () {
+					("Error: " + textStatus + ": " + errorThrown);
+				}
+			});
+		});
 }
 
 
@@ -60,32 +60,32 @@ function deleteManifest(name, metapath) {
 	$.ajax({
 		method: "POST",
 		url: "/sources/delete-manifest",
-		data: JSON.stringify({"name": name, "metapath": metapath}),
+		data: JSON.stringify({ "name": name, "metapath": metapath }),
 		contentType: 'application/json;charset=UTF-8',
 	})
-	.done(function(response) {
-		var errors = JSON.parse(response)['errors'];
-		if (errors != '') {
-			msg = '<p>Could not delete the manifest because of the following errors:</p>' + errors;
-		}
-		else {
-			msg = '<p>The manifest for <code>' + name + '</code> was deleted.</p>';
-		}
-	    bootbox.alert({
-        message: msg,
-        callback: function () {
-            window.location = '/sources';
-        }
-	    });
-	})
-	.fail(function(jqXHR, textStatus, errorThrown) {
-	    bootbox.alert({
-        message: '<p>The manifest could not be saved because of the following errors:</p>'+response,
-        callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
-        }
-	    });
-	});
+		.done(function (response) {
+			var errors = JSON.parse(response)['errors'];
+			if (errors != '') {
+				msg = '<p>Could not delete the manifest because of the following errors:</p>' + errors;
+			}
+			else {
+				msg = '<p>The manifest for <code>' + name + '</code> was deleted.</p>';
+			}
+			bootbox.alert({
+				message: msg,
+				callback: function () {
+					window.location = '/sources';
+				}
+			});
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			bootbox.alert({
+				message: '<p>The manifest could not be saved because of the following errors:</p>' + response,
+				callback: function () {
+					("Error: " + textStatus + ": " + errorThrown);
+				}
+			});
+		});
 }
 
 
@@ -98,31 +98,31 @@ function exportSourceManifest() {
 	$.ajax({
 		method: "POST",
 		url: "/sources/export-manifest",
-		data: JSON.stringify({'name': $('#name').val()}),
+		data: JSON.stringify({ 'name': $('#name').val() }),
 		contentType: 'application/json;charset=UTF-8',
 	})
-	.done(function(response) {
-		response = JSON.parse(response);
-		if (response['errors'].length != 0) {
-			result = JSON.stringify(response['errors']);
-		    bootbox.alert({
-	        message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
-	        callback: function () {
-	            ("Error: " + textStatus + ": " + errorThrown);
-	        }
-		    });
-		} else {
-			window.location = '/sources/download-export/' + filename;
-		}
-	})
-	.fail(function(jqXHR, textStatus, errorThrown) {
-	    bootbox.alert({
-        message: '<p>Sorry, mate! You\'ve got an error!</p>',
-        callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
-        }
-	    });
-	});
+		.done(function (response) {
+			response = JSON.parse(response);
+			if (response['errors'].length != 0) {
+				result = JSON.stringify(response['errors']);
+				bootbox.alert({
+					message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
+					callback: function () {
+						("Error: " + textStatus + ": " + errorThrown);
+					}
+				});
+			} else {
+				window.location = '/sources/download-export/' + filename;
+			}
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			bootbox.alert({
+				message: '<p>Sorry, mate! You\'ve got an error!</p>',
+				callback: function () {
+					("Error: " + textStatus + ": " + errorThrown);
+				}
+			});
+		});
 }
 
 
@@ -136,28 +136,28 @@ function exportSearch(data) {
 		data: JSON.stringify(data),
 		contentType: 'application/json;charset=UTF-8',
 	})
-	.done(function(response) {
-		response = JSON.parse(response);
-		if (response['errors'].length != 0) {
-			result = JSON.stringify(response['errors']);
-		    bootbox.alert({
-	        message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
-	        callback: function () {
-	            ("Error: " + textStatus + ": " + errorThrown);
-	        }
-		    });
-		} else {
-			window.location = '/sources/download-export/' + response['filename'];
-		}
-	})
-	.fail(function(jqXHR, textStatus, errorThrown) {
-	    bootbox.alert({
-        message: '<p>Sorry, mate! You\'ve got an error!</p>',
-        callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
-        }
-	    });
-	});
+		.done(function (response) {
+			response = JSON.parse(response);
+			if (response['errors'].length != 0) {
+				result = JSON.stringify(response['errors']);
+				bootbox.alert({
+					message: '<p>Sorry, mate! You\'ve got an error!</p><p>' + result + '</p>',
+					callback: function () {
+						("Error: " + textStatus + ": " + errorThrown);
+					}
+				});
+			} else {
+				window.location = '/sources/download-export/' + response['filename'];
+			}
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			bootbox.alert({
+				message: '<p>Sorry, mate! You\'ve got an error!</p>',
+				callback: function () {
+					("Error: " + textStatus + ": " + errorThrown);
+				}
+			});
+		});
 }
 
 
@@ -171,63 +171,63 @@ function searchSources(data) {
 		data: JSON.stringify(data),
 		contentType: 'application/json;charset=UTF-8',
 	})
-	.done(function(response) {
-		$('#results').empty();
-		response = JSON.parse(response);
-		if (response['errors'].length != 0) {
-			result = response['errors'];
-		} else {
-			result = response['response'];
-		}
-		// Make the result into a string
-		var out = '';
-		$.each(result, function (i, item) {
-			var link = '/sources/display/' + item['name'];
-			out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>';
-			$.each(item, function (key, value) {
-				value = JSON.stringify(value);
-				out += '<code>'+ key +'</code>: ' + value + '<br>';
-			});
-			out += '<hr>';
-		});
-		var $pagination = $('#pagination');
-		var defaultOpts = {
-			visiblePages: 5,
-			initiateStartPageClick: false,
-			onPageClick: function (event, page) {
-				var newdata = {
-					'query': $('#query').val(),
-					'regex': $('#regex').is(':checked'),
-					'limit': $('#limit').val(),
-					'properties': $('#properties').val(),
-					'page': page
-				}
-				searchPubs(newdata);
-				$('#scroll').click();
+		.done(function (response) {
+			$('#results').empty();
+			response = JSON.parse(response);
+			if (response['errors'].length != 0) {
+				result = response['errors'];
+			} else {
+				result = response['response'];
 			}
-		};
-		var totalPages = parseInt(response['num_pages']);
-		var currentPage = $pagination.twbsPagination('getCurrentPage');
-		$pagination.twbsPagination('destroy');
-		$pagination.twbsPagination($.extend({}, defaultOpts, {
-			startPage: currentPage,
-			totalPages: totalPages
-		}));
-		$('#results').append(out);
-		$('#hideSearch').html('Show Form');
-		$('#exportSearchResults').show();
-		$('#search-form').hide();
-		$('#results').show();
-		$('#pagination').show();
-	})
-	.fail(function(jqXHR, textStatus, errorThrown) {
-		bootbox.alert({
-		message: '<p>Sorry, mate! You\'ve got an error!</p>',
-		callback: function () {
-			("Error: " + textStatus + ": " + errorThrown);
-		}
+			// Make the result into a string
+			var out = '';
+			$.each(result, function (i, item) {
+				var link = '/sources/display/' + item['name'];
+				out += '<h4><a href="' + link + '">' + item['name'] + '</a></h4><br>';
+				$.each(item, function (key, value) {
+					value = JSON.stringify(value);
+					out += '<code>' + key + '</code>: ' + value + '<br>';
+				});
+				out += '<hr>';
+			});
+			var $pagination = $('#pagination');
+			var defaultOpts = {
+				visiblePages: 5,
+				initiateStartPageClick: false,
+				onPageClick: function (event, page) {
+					var newdata = {
+						'query': $('#query').val(),
+						'regex': $('#regex').is(':checked'),
+						'limit': $('#limit').val(),
+						'properties': $('#properties').val(),
+						'page': page
+					}
+					searchPubs(newdata);
+					$('#scroll').click();
+				}
+			};
+			var totalPages = parseInt(response['num_pages']);
+			var currentPage = $pagination.twbsPagination('getCurrentPage');
+			$pagination.twbsPagination('destroy');
+			$pagination.twbsPagination($.extend({}, defaultOpts, {
+				startPage: currentPage,
+				totalPages: totalPages
+			}));
+			$('#results').append(out);
+			$('#hideSearch').html('Show Form');
+			$('#exportSearchResults').show();
+			$('#search-form').hide();
+			$('#results').show();
+			$('#pagination').show();
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			bootbox.alert({
+				message: '<p>Sorry, mate! You\'ve got an error!</p>',
+				callback: function () {
+					("Error: " + textStatus + ": " + errorThrown);
+				}
+			});
 		});
-	});
 }
 
 
@@ -242,53 +242,60 @@ function updateManifest(jsonform, name) {
 		data: manifest,
 		contentType: 'application/json;charset=UTF-8',
 	})
-	.done(function(response) {
-		var manifest = JSON.parse(response)['manifest'];
-		var errors = JSON.parse(response)['errors'];
-		if (errors != '') {
-			msg = '<p>Could not update the manifest because of the following errors:</p>' + errors;
-		}
-		else {
-			msg = '<p>Updated the following manifest:</p>' + manifest;
-		}
-	    bootbox.alert({
-        message: msg,
-        callback: function () {
-            window.location = '/sources';
-        }
-	    });
-	})
-	.fail(function(jqXHR, textStatus, errorThrown) {
-	    bootbox.alert({
-        message: '<p>The manifest could not be updated because of the following errors:</p>'+response,
-        callback: function () {
-            ("Error: " + textStatus + ": " + errorThrown);
-        }
-	    });
-	});
+		.done(function (response) {
+			var manifest = JSON.parse(response)['manifest'];
+			var errors = JSON.parse(response)['errors'];
+			if (errors != '') {
+				msg = '<p>Could not update the manifest because of the following errors:</p>' + errors;
+			}
+			else {
+				msg = '<p>Updated the following manifest:</p>' + manifest;
+			}
+			bootbox.alert({
+				message: msg,
+				callback: function () {
+					window.location = '/sources';
+				}
+			});
+		})
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			bootbox.alert({
+				message: '<p>The manifest could not be updated because of the following errors:</p>' + response,
+				callback: function () {
+					("Error: " + textStatus + ": " + errorThrown);
+				}
+			});
+		});
 }
 
+function cleanup () {
+	var newform = jsonifyForm()
+	for (var key in newform) {
+	  if (newform[key] == '') delete newform[key]
+	}
+	return newform
+  }
 
 //
 // $(document).ready() Event Handling
 //
 
-$(document).ready(function() {
+$(document).ready(function () {
 
 	//
 	// Index Page Functions
 	//
 
 	/* Handles the Display form */
-	$('#go').click(function(e){
+	$('#go').click(function (e) {
 		var name = $('#display').val();
-		window.location = '/sources/display/' + name; 
+		window.location = '/sources/display/' + name;
 	});
-	$('#display').on('keypress',function(e){
-	 var key = (e.keyCode || e.which);
-	    if(key == 13 || key == 3){
-	       $('#go').click();
-	    }
+	$('#display').on('keypress', function (e) {
+		var key = (e.keyCode || e.which);
+		if (key == 13 || key == 3) {
+			$('#go').click();
+		}
 	});
 
 
@@ -297,15 +304,15 @@ $(document).ready(function() {
 	//
 
 	/* Handles the manifest preview and hide buttons */
-	$('#preview').click(function(e){
+	$('#preview').click(function (e) {
 		e.preventDefault();
 		$('form').hide();
 		$('#previewDisplay').show();
-		var jsonform =  jsonifyForm();
+		var jsonform = cleanup ();
 		$('#manifest').html(JSON.stringify(jsonform, null, '  '));
 	});
 
-	$('#hide').click(function(e){
+	$('#hide').click(function (e) {
 		e.preventDefault();
 		$('#previewDisplay').hide();
 		$('form').show();
@@ -317,13 +324,15 @@ $(document).ready(function() {
 	//
 
 	/* Handles form submission for record creation*/
-	$('form').on('submit',function(e) {
+	$('form').on('submit', function (e) {
 		e.preventDefault();
 		if ($(this).parsley().isValid()) {
 			var jsonform = jsonifyForm();
-		 	createManifest(jsonform);
+			createManifest(jsonform);
 		}
 	});
+
+	$('#date').dateformat()
 
 
 	//
@@ -331,10 +340,10 @@ $(document).ready(function() {
 	//
 
 	/* Toggles the Edit/Update button and field disabled property */
-	$('#update').click(function(e){
+	$('#update').click(function (e) {
 		e.preventDefault();
 		if ($('#update').html() == 'Edit') {
-			$('form').find('input, textarea, select').each(function(){
+			$('form').find('input, textarea, select').each(function () {
 				if ($(this).attr('id') != 'name') {
 					$(this).prop('readonly', false);
 					$(this).removeClass('disabled');
@@ -342,50 +351,50 @@ $(document).ready(function() {
 			});
 			$('#update').html('Update');
 		} else {
-	    	var name = $('#name').val();
-		    bootbox.confirm({
-		        message: 'Are you sure you wish to update the record for <code>' + name + '</code>?',
-		        buttons: {
-		            confirm: {label: 'Yes', className: 'btn-success'},
-		            cancel: {label: 'No', className: 'btn-danger'}
-		        },
-		        callback: function (result) {
-		        	if (result == true) {
-		        		name = $('#name').val();
-		        		var jsonform =  jsonifyForm();
-		        		$.extend(jsonform, {'name': name});
-		        		updateManifest(jsonform, name);
-		        	}
-		        }
-		    });
+			var name = $('#name').val();
+			bootbox.confirm({
+				message: 'Are you sure you wish to update the record for <code>' + name + '</code>?',
+				buttons: {
+					confirm: { label: 'Yes', className: 'btn-success' },
+					cancel: { label: 'No', className: 'btn-danger' }
+				},
+				callback: function (result) {
+					if (result == true) {
+						name = $('#name').val();
+						var jsonform = jsonifyForm();
+						$.extend(jsonform, { 'name': name });
+						updateManifest(jsonform, name);
+					}
+				}
+			});
 		}
 	});
 
 
 	/* Handles the Delete button */
-	$('#delete').click(function(e){
+	$('#delete').click(function (e) {
 		e.preventDefault();
-    	var name = $('#name').val();
-    	var metapath = $('#metapath').val();
-	    bootbox.confirm({
-	        message: 'Are you sure you wish to delete <code>' + name + '</code>?',
-	        buttons: {
-	            confirm: {label: 'Yes', className: 'btn-success'},
-	            cancel: {label: 'No', className: 'btn-danger'}
-	        },
-	        callback: function (result) {
-	        	if (result == true) {
-	        		deleteManifest(name, metapath);
-	        	}
-	        }
-	    });
-    });
+		var name = $('#name').val();
+		var metapath = $('#metapath').val();
+		bootbox.confirm({
+			message: 'Are you sure you wish to delete <code>' + name + '</code>?',
+			buttons: {
+				confirm: { label: 'Yes', className: 'btn-success' },
+				cancel: { label: 'No', className: 'btn-danger' }
+			},
+			callback: function (result) {
+				if (result == true) {
+					deleteManifest(name, metapath);
+				}
+			}
+		});
+	});
 
 
 	/* Handles the Export feature */
-	$('#export').click(function(e) {
+	$('#export').click(function (e) {
 		e.preventDefault();
-	    exportSourceManifest();
+		exportSourceManifest();
 	});
 
 
@@ -394,7 +403,7 @@ $(document).ready(function() {
 	//
 
 	/* Handles the Search feature */
-	$('#searchSources').click(function(e) {
+	$('#searchSources').click(function (e) {
 		e.preventDefault();
 		data = {
 			'query': $('#query').val(),
@@ -408,7 +417,7 @@ $(document).ready(function() {
 
 
 	/* Handles the Search Export feature */
-	$('#exportSearchResults').click(function(e) {
+	$('#exportSearchResults').click(function (e) {
 		e.preventDefault();
 		data = {
 			'query': $('#query').val(),
@@ -423,24 +432,24 @@ $(document).ready(function() {
 
 
 	/* Toggles the search form */
-	$('#hideSearch').click(function(){
+	$('#hideSearch').click(function () {
 		if ($('#hideSearch').html() == 'Hide Form') {
 			$('#search-form').hide();
 			$('#exportSearchResults').show();
 			$('#results').show();
-			$('#pagination').show();						
+			$('#pagination').show();
 			$('#hideSearch').html('Show Form');
 		} else {
 			$('#hideSearch').html('Hide Form');
 			$('#exportSearchResults').hide();
 			$('#results').hide();
-			$('#pagination').hide();						
+			$('#pagination').hide();
 			$('#search-form').show();
 		}
 	});
 
 	/* Handles the pagination buttons */
-	$('.page-link').click(function(e){
+	$('.page-link').click(function (e) {
 		e.preventDefault();
 		data = {
 			'query': $('#query').val(),
@@ -449,9 +458,9 @@ $(document).ready(function() {
 			'properties': $('#properties').val(),
 			'page': $(this).html()
 		}
-	    searchSources(data);
+		searchSources(data);
 	});
 
-	
+
 }); /* End of $(document).ready() Event Handling */
 

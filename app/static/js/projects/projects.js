@@ -5,7 +5,7 @@
 function jsonifyForm () {
   /* Handles JSON form serialisation */
   var form = {}
-  $.each($('form').serializeArray(), function (i, field) {
+  $.each($('form *').not('.datepicker').serializeArray(), function (i, field) {
     form[field.name] = field.value || ''
   })
   return form
@@ -218,6 +218,14 @@ function launchJupyter (btnId, formvals) {
     })
 }
 
+function cleanup () {
+  var newform = jsonifyForm()
+  for (var key in newform) {
+    if (newform[key] == '') delete newform[key]
+  }
+  return newform
+  }
+
 //
 // $(document).ready()
 //
@@ -240,7 +248,7 @@ $(document).ready(function () {
     e.preventDefault()
     $('form').hide()
     $('#previewDisplay').show()
-    var jsonform = jsonifyForm($('#manifestForm'))
+    var jsonform = cleanup()
     $('#manifest').html(JSON.stringify(jsonform, null, '  '))
   })
   $('#hide').click(function (e) {
@@ -248,6 +256,9 @@ $(document).ready(function () {
     $('#previewDisplay').hide()
     $('form').show()
   })
+
+  $('#updated').dateformat()
+  $('#created').dateformat()
 
   // Save Button
   $('#save').click(function (e) {

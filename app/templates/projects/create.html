@@ -56,10 +56,15 @@
                       <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" placeholder="{{ opt.placeholder|safe or '' }}" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.name in ['metapath'] }} {{ 'disabled' if opt.name in ['metapath'] }}>
                   </div>
                   {% elif opt.fieldtype == 'textarea' %}
-                  <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
-                  <div class="col-sm-10">
-                    <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
-                  </div>
+                <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                <div class="col-sm-10">
+                    {% if opt.name == 'updated' or opt.name == 'created' or opt.name == 'accessed' %}
+                    <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>
+                    <div id = "{{ opt.name|safe }}_dateformat"> </div>
+                    {% else %}
+                  <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                  {% endif %}
+                </div>
                   {% endif %}
                 </div> 
                 {% endif %}
@@ -77,7 +82,12 @@
                 {% elif opt.fieldtype == 'textarea' %}
                 <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
                 <div class="col-sm-10">
+                    {% if opt.name == 'updated' or opt.name == 'created' or opt.name == 'accessed' %}
+                    <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>
+                    <div id = "{{ opt.name|safe }}_dateformat"> </div>
+                    {% else %}
                   <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                  {% endif %}
                 </div>
                 {% endif %}
               </div> 
@@ -124,10 +134,15 @@
               <input name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" type="text" placeholder="{{ opt.placeholder|safe or '' }}" {% if opt.value %}value="{{ opt.value|safe }}"{% endif %} class="form-control" {{ 'required' if opt.required }} {{ 'readonly' if opt.name in ['name'] }} {{ 'disabled' if opt.name in ['metapath'] }}>
           </div>
           {% elif opt.fieldtype == 'textarea' %}
-          <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
-          <div class="col-sm-10">
-            <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
-          </div>
+                <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
+                <div class="col-sm-10">
+                    {% if opt.name == 'updated' or opt.name == 'created' or opt.name == 'accessed' %}
+                    <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>
+                    <div id = "{{ opt.name|safe }}_dateformat"> </div>
+                    {% else %}
+                  <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                  {% endif %}
+                </div>
           {% endif %}
         </div> 
         {% endif %}

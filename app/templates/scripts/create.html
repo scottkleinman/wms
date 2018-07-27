@@ -127,7 +127,12 @@
                 {% elif opt.fieldtype == 'textarea' %}
                 <label class="col-sm-2 col-form-label" for="{{ opt.name|safe }}">{{ opt.name|safe }}</label>
                 <div class="col-sm-10">
+                    {% if opt.name == 'updated' or opt.name == 'created' or opt.name == 'accessed' %}
+                    <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>
+                    <div id = "{{ opt.name|safe }}_dateformat"> </div>
+                    {% else %}
                   <textarea name="{{ opt.name|safe }}" id="{{ opt.name|safe }}" class="form-control" placeholder="{{ opt.placeholder|safe or '' }}" {{ 'required' if opt.required }} {{ 'readonly' if opt.readonly }} {{ 'disabled' if opt.disabled }}>{% if opt.value %}{{ opt.value|safe }}{% endif %}</textarea>   
+                  {% endif %}
                 </div>
                 {% endif %}
               </div> 

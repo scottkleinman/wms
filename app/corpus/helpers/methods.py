@@ -205,6 +205,8 @@ def validate_manifest(manifest, nodetype):
 		filename = 'PathNode.json'
 	schema_file = url + filename
 	schema = json.loads(requests.get(schema_file).text)
+	print(schema_file)
+	print(manifest)
 	try:
 		validate(manifest, schema, format_checker=FormatChecker())
 		return True
@@ -248,7 +250,7 @@ def create_record(manifest):
 	except:
 		"""We need to add some code here that looks for a LexisNexis
 		`doc_id` and appends a portion of it to `manifest['name']`
-		until it is unique withing the collection. Otherwise, add a
+		until it is unique within the collection. Otherwise, add a
 		random number or display the error below."""
 		msg = 'The <code>name</code> <strong>' + manifest['name'] + '</strong> already exists along the metapath <code>' + manifest['metapath'] + '</code> in the database.'
 		errors.append(msg)

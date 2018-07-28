@@ -39,75 +39,44 @@ ALLOWED_EXTENSIONS = ['zip']
 
 @tasks.route('/')
 def index():
-	"""Tasks index page. The index.html template 
-	needs some further conversion from Angular.
-	`tasks.js` has been created, but it needs to be 
-	converted from Angular."""
-	scripts = [] # E.g. ['js/tasks/tasks.js']
+	"""Tasks index page."""
+	scripts = ['js/tasks/tasks.js'] # E.g. ['js/tasks/tasks.js']
 	styles = [] # E.g. ['css/tasks/tasks.css']
 	breadcrumbs = [{'link': '/tasks', 'label': 'Manage Tasks'}]
-	tasks = [
-		{'task_name': 'A collection', 'task_id': 'a_collection', 
-		'task_result': 'pending', 'task_status': 3}
-	]
-	# The PySiQ queue handling has been put in a function below.
-	queue_needs_handling = False
-	if queue_needs_handling:
-		handle_queue()
+	tasks = [{
+			'task_name': 'A collection',
+			'task_id': '123', 
+			'task_result': 'QUEUED',
+			'task_status': 3
+		},
+		{
+			'task_name': 'Another collection',
+			'task_id': '456', 
+			'task_result': 'QUEUED',
+			'task_status': 3
+		}]
 	return render_template('tasks/index.html', scripts=scripts, styles=styles, 
 			breadcrumbs=breadcrumbs, tasks=tasks)
 
-def handle_queue():
-	"""The code from test_2.py in the PySiQ GitHub repo.
-	Print statements have been fixed for Python 3. The PySiQ
-	script may need further conversion."""
-	import os.path, sys
-	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
 
-	from time import sleep
-	from app.tasks import PySiQ
-	# from PySiQ import Queue
+@tasks.route('/api/status/<id>', methods=['GET', 'POST'])
+def api_status(id):
+	""" For testing. """
+	response = json.dumps({
+			'success': True,
+			'id': '123',
+			'status': 1,
+			'result': 'STARTED'
+		})
+	return response
 
-	# ************************************************************************
-	# Initialize queue
-	# ************************************************************************
 
-	N_WORKERS = 2
-
-	queue_instance = Queue()
-	queue_instance.start_worker(N_WORKERS)
-
-	#NOTE: Uncomment this line to enable verbose queuing
-	#queue_instance.enableStdoutLogging()
-
-	# ************************************************************************
-	# Queue tasks
-	# ************************************************************************
-
-	def foo(task_id, file_path, delay):
-		print("Task " +  str(task_id) + " started...")
-		file = open(file_path,"a")
-		file.write("This is task " + str(task_id) + ". I'm safely writing in this file.\n")
-		sleep(delay)
-		file.close()
-		print("Task " + str(task_id) + " finished")
-
-	queue_instance.enqueue(
-		fn=foo,
-		args=(1, "/tmp/test_pysiq.log", 10),
-		task_id= 1
-	)
-
-	queue_instance.enqueue(
-		fn=foo,
-		args=(2, "/tmp/test_pysiq.log", 5),
-		task_id= 2,
-		incompatible = ["foo"]
-	)
-
-	queue_instance.enqueue(
-		fn=foo,
-		args=(3, "/tmp/test_pysiq.log", 5),
-		task_id= 3,
-		depend= [2]
-	)
+@tasks.route('/api/enqueue', methods=['GET', 'POST'])
+def api_enqueue():
+	""" For testing. """
+	response = json.dumps({
+		'success': True,
+		'id': '789',
+		'status': 3,
+		'result': 'QUEUED'})
+	return response

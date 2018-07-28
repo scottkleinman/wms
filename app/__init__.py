@@ -33,6 +33,7 @@ app.register_blueprint(tasks, url_prefix='/tasks')
 # Configurations
 app.config.from_object('config')
 app.config.from_pyfile('config.py')
+# print(app.instance_path)
 
 #----------------------------------------------------------------------------#
 # Controllers.

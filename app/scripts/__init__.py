@@ -19,14 +19,14 @@ import pymongo
 from pymongo import MongoClient
 
 # Set up the MongoDB client, configure the databases, and assign variables to the "collections" 
-client = MongoClient('mongodb://mongodb:27017')
+client = MongoClient('mongodb://localhost:27017')
 db = client.we1s
 scripts_db = db.Scripts
 
 scripts = Blueprint('scripts', __name__, template_folder='scripts')
 
 # from app.scripts.helpers import methods as methods
-from app.projects.helpers import workspace as workspace
+# from app.scripts.helpers import workspace as workspace
 
 #----------------------------------------------------------------------------#
 # Constants.
@@ -206,7 +206,7 @@ def index():
 @scripts.route('/create', methods=['GET', 'POST'])
 def create():
 	"""Create/update script or tool page."""
-	scripts = ['js/parsley.min.js', 'js/query-builder.standalone.js', 'js/moment.min.js', 'js/jquery-sortable-min.js', 'js/scripts/scripts.js', 'js/scripts/search.js']
+	scripts = ['js/corpus/dropzone.js', 'js/parsley.min.js', 'js/moment.min.js', 'js/scripts/scripts.js', 'js/scripts/upload.js']
 	styles = ['css/query-builder.default.css']    
 	breadcrumbs = [{'link': '/scripts', 'label': 'Scripts'}, {'link': '/scripts/create', 'label': 'Create/Update Script'}]
 	with open('app/templates/scripts/template_config.yml', 'r') as stream:

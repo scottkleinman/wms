@@ -33,6 +33,7 @@ project-template:
     fieldtype: text
   - name: _id
     fieldtype: text
+    readonly: true
   - name: description
     fieldtype: textarea
   - name: version

@@ -12,7 +12,7 @@ from pymongo import MongoClient
 # from tableschema_pandas import Storage
 
 # Set up the MongoDB client, configure the databases, and assign variables to the "collections" 
-client = MongoClient('mongodb://mongodb:27017')
+client = MongoClient('mongodb://mongo:27017')
 db = client.we1s
 publications = db.Publications
 

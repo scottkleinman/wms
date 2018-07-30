@@ -18,7 +18,7 @@ import pymongo
 from pymongo import MongoClient
 
 # Set up the MongoDB client, configure the databases, and assign variables to the "collections" 
-client = MongoClient('mongodb://mongodb:27017')
+client = MongoClient('mongodb://mongo:27017')
 db = client.we1s
 projects_db = db.Projects
 corpus_db = db.Corpus
